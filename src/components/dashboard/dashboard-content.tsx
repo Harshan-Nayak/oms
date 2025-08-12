@@ -9,7 +9,6 @@ import {
   Book, 
   Factory, 
   ShoppingCart, 
-  Users,
   TrendingUp,
   Calendar,
   Sun
@@ -118,7 +117,7 @@ export function DashboardContent({ profile, dashboardData }: DashboardContentPro
             Welcome back, {profile.first_name}!
           </h1>
           <p className="text-gray-600 mt-1">
-            Here's what's happening with your business today.
+            Here&apos;s what&apos;s happening with your business today.
           </p>
         </div>
         <div className="text-right">
@@ -140,7 +139,7 @@ export function DashboardContent({ profile, dashboardData }: DashboardContentPro
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-xl font-semibold">Ahmedabad, India</h3>
-              <p className="text-blue-100">Today's Weather</p>
+              <p className="text-blue-100">Today&apos;s Weather</p>
             </div>
             <div className="flex items-center space-x-4">
               <Sun className="h-8 w-8" />

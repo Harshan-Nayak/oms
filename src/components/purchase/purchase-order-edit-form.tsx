@@ -13,8 +13,8 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, Plus, Trash2, Building2 } from 'lucide-react'
-import { Database } from '@/types/database'
+import { Loader2, Plus, Trash2 } from 'lucide-react'
+import { Database, Json } from '@/types/database'
 
 type PurchaseOrder = Database['public']['Tables']['purchase_orders']['Row']
 type Ledger = Database['public']['Tables']['ledgers']['Row']
@@ -55,7 +55,7 @@ export function PurchaseOrderEditForm({ purchaseOrder, ledgers, userId }: Purcha
   )
 
   // Parse existing items
-  const parseItems = (items: any) => {
+  const parseItems = (items: Json | null) => {
     if (!items) return [{ item_name: '', description: '', quantity: 1, unit_price: 0, total_price: 0 }]
     try {
       const parsed = typeof items === 'string' ? JSON.parse(items) : items
@@ -81,7 +81,7 @@ export function PurchaseOrderEditForm({ purchaseOrder, ledgers, userId }: Purcha
       delivery_date: purchaseOrder.delivery_date || '',
       description: purchaseOrder.description || '',
       terms_conditions: purchaseOrder.terms_conditions || '',
-      status: purchaseOrder.status as any,
+      status: purchaseOrder.status,
       items: parseItems(purchaseOrder.items),
     },
   })
@@ -199,7 +199,7 @@ export function PurchaseOrderEditForm({ purchaseOrder, ledgers, userId }: Purcha
 
           <div className="space-y-2">
             <Label htmlFor="status">Status</Label>
-            <Select value={watch('status')} onValueChange={(value) => setValue('status', value as any)}>
+            <Select value={watch('status')} onValueChange={(value) => setValue('status', value as 'Draft' | 'Sent' | 'Confirmed' | 'Partial' | 'Completed' | 'Cancelled')}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>

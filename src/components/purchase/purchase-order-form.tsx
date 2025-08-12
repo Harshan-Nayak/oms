@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, Plus, Trash2, Building2 } from 'lucide-react'
+import { Loader2, Plus, Trash2 } from 'lucide-react'
 import { Database } from '@/types/database'
 
 type Ledger = Database['public']['Tables']['ledgers']['Row']
@@ -33,7 +33,7 @@ const purchaseOrderSchema = z.object({
   delivery_date: z.string().optional(),
   description: z.string().optional(),
   terms_conditions: z.string().optional(),
-  status: z.enum(['Draft', 'Sent', 'Confirmed', 'Partial', 'Completed', 'Cancelled']).default('Draft'),
+  status: z.enum(['Draft', 'Sent', 'Confirmed', 'Partial', 'Completed', 'Cancelled']),
   items: z.array(purchaseOrderItemSchema).min(1, 'At least one item is required'),
 })
 
@@ -213,7 +213,7 @@ export function PurchaseOrderForm({ userId, ledgers }: PurchaseOrderFormProps) {
 
           <div className="space-y-2">
             <Label htmlFor="status">Status</Label>
-            <Select value={watch('status')} onValueChange={(value) => setValue('status', value as any)}>
+            <Select value={watch('status')} onValueChange={(value) => setValue('status', value as 'Draft' | 'Sent' | 'Confirmed' | 'Partial' | 'Completed' | 'Cancelled')}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>

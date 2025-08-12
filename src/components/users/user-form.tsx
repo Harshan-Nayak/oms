@@ -25,12 +25,12 @@ const userSchema = z.object({
   first_name: z.string().min(1, 'First name is required'),
   last_name: z.string().min(1, 'Last name is required'),
   user_role: z.enum(['Admin', 'Manager', 'User']),
-  user_status: z.enum(['Active', 'Inactive']).default('Active'),
+  user_status: z.enum(['Active', 'Inactive']),
   mobile: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
-  country: z.string().default('India'),
+  country: z.string(),
   document_type: z.string().optional(),
   document_number: z.string().optional(),
   dob: z.string().optional(),
@@ -396,7 +396,7 @@ export function UserForm({ user, isEdit = false, isOwnProfile = false, currentUs
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="user_role">User Role *</Label>
-              <Select value={watch('user_role')} onValueChange={(value) => setValue('user_role', value as any)}>
+              <Select value={watch('user_role')} onValueChange={(value) => setValue('user_role', value as 'Admin' | 'Manager' | 'User')}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -413,7 +413,7 @@ export function UserForm({ user, isEdit = false, isOwnProfile = false, currentUs
 
             <div className="space-y-2">
               <Label htmlFor="user_status">Account Status *</Label>
-              <Select value={watch('user_status')} onValueChange={(value) => setValue('user_status', value as any)}>
+              <Select value={watch('user_status')} onValueChange={(value) => setValue('user_status', value as 'Active' | 'Inactive')}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -540,3 +540,4 @@ export function UserForm({ user, isEdit = false, isOwnProfile = false, currentUs
     </form>
   )
 }
+

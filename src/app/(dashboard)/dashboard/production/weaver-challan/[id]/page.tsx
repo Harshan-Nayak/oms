@@ -2,12 +2,10 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { 
-  ArrowLeft, 
-  Edit, 
-  Factory, 
-  FileText, 
+import {
+  ArrowLeft,
+  Edit,
+  Factory,
   Printer,
   Building2,
   Calendar,
@@ -16,15 +14,23 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { formatDate } from '@/lib/utils'
+import { Tables, Json } from '@/types/supabase'
+
+type WeaverChallan = Tables<'weaver_challans'> & {
+  ledgers: Tables<'ledgers'> | null
+}
 
 interface WeaverChallanDetailPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 export default async function WeaverChallanDetailPage({ params }: WeaverChallanDetailPageProps) {
   const supabase = createServerSupabaseClient()
+  
+  // Await the params
+  const resolvedParams = await params
   
   const { data: { user } } = await supabase.auth.getUser()
   
@@ -43,7 +49,7 @@ export default async function WeaverChallanDetailPage({ params }: WeaverChallanD
     redirect('/login')
   }
 
-  // Fetch weaver challan details with ledger info
+  // Fetch weaver challan details with ledger info - use resolvedParams.id
   const { data: weaverChallan, error } = await supabase
     .from('weaver_challans')
     .select(`
@@ -59,7 +65,7 @@ export default async function WeaverChallanDetailPage({ params }: WeaverChallanD
         gst_number
       )
     `)
-    .eq('id', params.id)
+    .eq('id', resolvedParams.id)
     .single()
 
   if (error || !weaverChallan) {
@@ -68,7 +74,7 @@ export default async function WeaverChallanDetailPage({ params }: WeaverChallanD
 
   const canEdit = profile.user_role === 'Admin' || profile.user_role === 'Manager'
 
-  const parseQualityDetails = (qualityDetails: any) => {
+  const parseQualityDetails = (qualityDetails: Json | null) => {
     if (!qualityDetails) return []
     try {
       return typeof qualityDetails === 'string' ? JSON.parse(qualityDetails) : qualityDetails
@@ -194,7 +200,7 @@ export default async function WeaverChallanDetailPage({ params }: WeaverChallanD
                   <div>
                     <label className="text-sm font-medium text-gray-700">Address</label>
                     <p className="text-gray-900">
-                      {weaverChallan.ledgers.address ? 
+                      {weaverChallan.ledgers.address ?
                         `${weaverChallan.ledgers.address}, ${weaverChallan.ledgers.city}, ${weaverChallan.ledgers.state}` :
                         'Not provided'
                       }
@@ -252,7 +258,7 @@ export default async function WeaverChallanDetailPage({ params }: WeaverChallanD
                 <div className="mt-6">
                   <label className="text-sm font-medium text-gray-700 mb-3 block">Quality Details</label>
                   <div className="space-y-2">
-                    {qualityDetails.map((detail: any, index: number) => (
+                    {qualityDetails.map((detail: { [key: string]: string | number }, index: number) => (
                       <div key={index} className="bg-gray-50 p-3 rounded-lg">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
                           {Object.entries(detail).map(([key, value]) => (

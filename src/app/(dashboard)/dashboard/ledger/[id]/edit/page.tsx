@@ -6,12 +6,13 @@ import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
 interface LedgerEditPageProps {
-  params: {
-    id: string
-  }
+  params: Promise<{ id: string }>
 }
 
 export default async function LedgerEditPage({ params }: LedgerEditPageProps) {
+  // Await the params
+  const { id } = await params
+  
   const supabase = createServerSupabaseClient()
   
   const { data: { user } } = await supabase.auth.getUser()
@@ -40,7 +41,7 @@ export default async function LedgerEditPage({ params }: LedgerEditPageProps) {
   const { data: ledger, error } = await supabase
     .from('ledgers')
     .select('*')
-    .eq('ledger_id', params.id)
+    .eq('ledger_id', id)
     .single()
 
   if (error || !ledger) {

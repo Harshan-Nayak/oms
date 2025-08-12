@@ -27,10 +27,10 @@ const productSchema = z.object({
   product_color: z.string().optional(),
   product_description: z.string().optional(),
   product_material: z.string().optional(),
-  product_brand: z.string().default('Bhaktinandan'),
-  product_country: z.string().default('India'),
-  product_status: z.enum(['Active', 'Inactive']).default('Active'),
-  product_qty: z.number().min(0).default(0),
+  product_brand: z.string(),
+  product_country: z.string(),
+  product_status: z.enum(['Active', 'Inactive']),
+  product_qty: z.number().min(0),
   wash_care: z.string().optional(),
 })
 
@@ -63,10 +63,10 @@ export function ProductEditForm({ product, userId }: ProductEditFormProps) {
       product_color: product.product_color || '',
       product_description: product.product_description || '',
       product_material: product.product_material || '',
-      product_brand: product.product_brand,
-      product_country: product.product_country,
+      product_brand: product.product_brand || 'Bhaktinandan',
+      product_country: product.product_country || 'India',
       product_status: product.product_status as 'Active' | 'Inactive',
-      product_qty: product.product_qty,
+      product_qty: product.product_qty || 0,
       wash_care: product.wash_care || '',
     },
   })

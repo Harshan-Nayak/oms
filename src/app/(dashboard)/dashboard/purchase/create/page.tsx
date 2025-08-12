@@ -25,7 +25,7 @@ export default async function CreatePurchaseOrderPage() {
   // Fetch ledgers for dropdown
   const { data: ledgers } = await supabase
     .from('ledgers')
-    .select('ledger_id, business_name, contact_person_name, mobile_number, email, address, city, state, gst_number')
+    .select('*')
     .order('business_name', { ascending: true })
 
   return (

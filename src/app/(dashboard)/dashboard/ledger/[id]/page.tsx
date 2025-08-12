@@ -9,12 +9,13 @@ import Image from 'next/image'
 import { formatDate } from '@/lib/utils'
 
 interface LedgerDetailPageProps {
-  params: {
-    id: string
-  }
+  params: Promise<{ id: string }>
 }
 
 export default async function LedgerDetailPage({ params }: LedgerDetailPageProps) {
+  // Await the params
+  const { id } = await params
+  
   const supabase = createServerSupabaseClient()
   
   const { data: { user } } = await supabase.auth.getUser()
@@ -38,7 +39,7 @@ export default async function LedgerDetailPage({ params }: LedgerDetailPageProps
   const { data: ledger, error } = await supabase
     .from('ledgers')
     .select('*')
-    .eq('ledger_id', params.id)
+    .eq('ledger_id', id)
     .single()
 
   if (error || !ledger) {

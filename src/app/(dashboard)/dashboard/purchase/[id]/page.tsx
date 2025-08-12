@@ -11,21 +11,25 @@ import {
   Printer,
   Building2,
   Calendar,
-  Package,
-  DollarSign 
+  Package
 } from 'lucide-react'
 import Link from 'next/link'
 import { formatDate } from '@/lib/utils'
+import { Tables, Json } from '@/types/supabase'
+
+type PurchaseOrder = Tables<'purchase_orders'> & {
+  ledgers: Tables<'ledgers'> | null
+}
 
 interface PurchaseOrderDetailPageProps {
-  params: {
-    id: string
-  }
+  params: Promise<{ id: string }>
 }
 
 export default async function PurchaseOrderDetailPage({ params }: PurchaseOrderDetailPageProps) {
   const supabase = createServerSupabaseClient()
   
+  const { id } = await params
+
   const { data: { user } } = await supabase.auth.getUser()
   
   if (!user) {
@@ -59,7 +63,7 @@ export default async function PurchaseOrderDetailPage({ params }: PurchaseOrderD
         gst_number
       )
     `)
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
 
   if (error || !purchaseOrder) {
@@ -68,8 +72,9 @@ export default async function PurchaseOrderDetailPage({ params }: PurchaseOrderD
 
   const canEdit = profile.user_role === 'Admin' || profile.user_role === 'Manager'
 
-  const getStatusBadge = (status: string) => {
-    const statusColors = {
+  const getStatusBadge = (status: string | null) => {
+    if (!status) return null
+    const statusColors: { [key: string]: string } = {
       'Draft': 'bg-gray-100 text-gray-700',
       'Sent': 'bg-blue-100 text-blue-700',
       'Confirmed': 'bg-green-100 text-green-700',
@@ -79,13 +84,13 @@ export default async function PurchaseOrderDetailPage({ params }: PurchaseOrderD
     }
     
     return (
-      <Badge variant="secondary" className={statusColors[status as keyof typeof statusColors]}>
+      <Badge variant="secondary" className={statusColors[status]}>
         {status}
       </Badge>
     )
   }
 
-  const parseItems = (items: any) => {
+  const parseItems = (items: Json | null) => {
     if (!items) return []
     try {
       return typeof items === 'string' ? JSON.parse(items) : items
@@ -216,7 +221,7 @@ export default async function PurchaseOrderDetailPage({ params }: PurchaseOrderD
                   <div>
                     <label className="text-sm font-medium text-gray-700">Address</label>
                     <p className="text-gray-900">
-                      {purchaseOrder.ledgers.address ? 
+                      {purchaseOrder.ledgers.address ?
                         `${purchaseOrder.ledgers.address}, ${purchaseOrder.ledgers.city}, ${purchaseOrder.ledgers.state}` :
                         'Not provided'
                       }
@@ -238,7 +243,7 @@ export default async function PurchaseOrderDetailPage({ params }: PurchaseOrderD
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {items.map((item: any, index: number) => (
+                {items.map((item: { item_name: string; description: string; quantity: number; unit_price: number; total_price: number }, index: number) => (
                   <div key={index} className="border rounded-lg p-4">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div className="md:col-span-2">
@@ -313,11 +318,11 @@ export default async function PurchaseOrderDetailPage({ params }: PurchaseOrderD
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-700">Created At</label>
-                  <p className="text-gray-900">{formatDate(purchaseOrder.created_at)}</p>
+                  <p className="text-gray-900">{purchaseOrder.created_at ? formatDate(purchaseOrder.created_at) : 'N/A'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">Last Updated</label>
-                  <p className="text-gray-900">{formatDate(purchaseOrder.updated_at)}</p>
+                  <p className="text-gray-900">{purchaseOrder.updated_at ? formatDate(purchaseOrder.updated_at) : 'N/A'}</p>
                 </div>
               </div>
             </CardContent>

@@ -28,10 +28,10 @@ const productSchema = z.object({
   product_color: z.string().optional(),
   product_description: z.string().optional(),
   product_material: z.string().optional(),
-  product_brand: z.string().default('Bhaktinandan'),
-  product_country: z.string().default('India'),
-  product_status: z.enum(['Active', 'Inactive']).default('Active'),
-  product_qty: z.number().min(0).default(0),
+  product_brand: z.string(),
+  product_country: z.string(),
+  product_status: z.enum(['Active', 'Inactive']),
+  product_qty: z.number().min(0),
   wash_care: z.string().optional(),
 })
 

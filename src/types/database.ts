@@ -1,3 +1,7 @@
+import { Json } from "./supabase"
+
+export type { Json }
+
 export interface Database {
   public: {
     Tables: {
@@ -180,7 +184,7 @@ export interface Database {
           transport_name: string | null
           lr_number: string | null
           transport_charge: number | null
-          quality_details: any | null
+          quality_details: Json | null
           created_by: string
           created_at: string
           updated_at: string
@@ -201,7 +205,7 @@ export interface Database {
           transport_name?: string | null
           lr_number?: string | null
           transport_charge?: number | null
-          quality_details?: any | null
+          quality_details?: Json | null
           created_by: string
           edit_logs?: string | null
         }
@@ -220,7 +224,7 @@ export interface Database {
           transport_name?: string | null
           lr_number?: string | null
           transport_charge?: number | null
-          quality_details?: any | null
+          quality_details?: Json | null
           edit_logs?: string | null
         }
       }
@@ -236,7 +240,7 @@ export interface Database {
           description: string | null
           delivery_date: string | null
           terms_conditions: string | null
-          items: any
+          items: Json
           created_by: string
           created_at: string
           updated_at: string
@@ -251,7 +255,7 @@ export interface Database {
           description?: string | null
           delivery_date?: string | null
           terms_conditions?: string | null
-          items?: any
+          items?: Json
           created_by: string
         }
         Update: {
@@ -264,7 +268,7 @@ export interface Database {
           description?: string | null
           delivery_date?: string | null
           terms_conditions?: string | null
-          items?: any
+          items?: Json
         }
       }
     }

@@ -5,13 +5,14 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
-interface ProductEditPageProps {
-  params: {
-    id: string
-  }
-}
-
-export default async function ProductEditPage({ params }: ProductEditPageProps) {
+export default async function ProductEditPage({
+  params
+}: {
+  params: Promise<{ id: string }>
+}) {
+  // Await the params
+  const { id } = await params
+  
   const supabase = createServerSupabaseClient()
   
   const { data: { user } } = await supabase.auth.getUser()
@@ -40,7 +41,7 @@ export default async function ProductEditPage({ params }: ProductEditPageProps) 
   const { data: product, error } = await supabase
     .from('products')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
 
   if (error || !product) {

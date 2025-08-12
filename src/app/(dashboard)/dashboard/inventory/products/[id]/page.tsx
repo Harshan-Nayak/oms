@@ -9,12 +9,13 @@ import Image from 'next/image'
 import { formatDate } from '@/lib/utils'
 
 interface ProductDetailPageProps {
-  params: {
-    id: string
-  }
+  params: Promise<{ id: string }>
 }
 
 export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
+  // Await the params
+  const { id } = await params
+  
   const supabase = createServerSupabaseClient()
   
   const { data: { user } } = await supabase.auth.getUser()
@@ -38,7 +39,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   const { data: product, error } = await supabase
     .from('products')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
 
   if (error || !product) {

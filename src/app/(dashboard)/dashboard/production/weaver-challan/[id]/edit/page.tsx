@@ -6,51 +6,54 @@ import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
 interface WeaverChallanEditPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 export default async function WeaverChallanEditPage({ params }: WeaverChallanEditPageProps) {
   const supabase = createServerSupabaseClient()
+  
+  // Await the params
+  const resolvedParams = await params
   
   const { data: { user } } = await supabase.auth.getUser()
   
   if (!user) {
     redirect('/login')
   }
-
+  
   // Get user profile
   const { data: profile } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
     .single()
-
+  
   if (!profile) {
     redirect('/login')
   }
-
+  
   // Check permissions
   if (profile.user_role !== 'Admin' && profile.user_role !== 'Manager') {
     redirect('/dashboard/production/weaver-challan')
   }
-
-  // Fetch weaver challan details
+  
+  // Fetch weaver challan details - use resolvedParams.id
   const { data: weaverChallan, error } = await supabase
     .from('weaver_challans')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', resolvedParams.id)
     .single()
-
+  
   if (error || !weaverChallan) {
     notFound()
   }
-
+  
   // Fetch ledgers for dropdown
   const { data: ledgers } = await supabase
     .from('ledgers')
-    .select('ledger_id, business_name, contact_person_name, mobile_number, email, address, city, state, gst_number')
+    .select('*')
     .order('business_name', { ascending: true })
 
   return (

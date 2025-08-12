@@ -28,7 +28,7 @@ const ledgerSchema = z.object({
   city: z.string().optional(),
   district: z.string().optional(),
   state: z.string().optional(),
-  country: z.string().default('India'),
+  country: z.string(),
   zip_code: z.string().optional(),
   gst_number: z.string().optional(),
 })

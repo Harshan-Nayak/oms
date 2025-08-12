@@ -32,7 +32,7 @@ import {
   Truck,
   Calendar
 } from 'lucide-react'
-import { Database } from '@/types/database'
+import { Database, Json } from '@/types/database'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import { WeaverChallanForm } from './weaver-challan-form'
 
@@ -122,7 +122,7 @@ export function WeaverChallanContent({
     )
   }
 
-  const parseQualityDetails = (qualityDetails: any) => {
+  const parseQualityDetails = (qualityDetails: Json | null) => {
     if (!qualityDetails) return []
     try {
       return typeof qualityDetails === 'string' 

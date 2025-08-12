@@ -21,14 +21,16 @@ import Link from 'next/link'
 import { formatDate } from '@/lib/utils'
 
 interface UserDetailPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 export default async function UserDetailPage({ params }: UserDetailPageProps) {
   const supabase = createServerSupabaseClient()
   
+  const { id } = await params
+
   const { data: { user: currentUser } } = await supabase.auth.getUser()
   
   if (!currentUser) {
@@ -47,7 +49,7 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
   }
 
   // Only admins can view other user details
-  if (currentProfile.user_role !== 'Admin' && currentUser.id !== params.id) {
+  if (currentProfile.user_role !== 'Admin' && currentUser.id !== id) {
     redirect('/dashboard/users/manage')
   }
 
@@ -55,14 +57,14 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
   const { data: userProfile, error } = await supabase
     .from('profiles')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
 
   if (error || !userProfile) {
     notFound()
   }
 
-  const canEdit = currentProfile.user_role === 'Admin' || currentUser.id === params.id
+  const canEdit = currentProfile.user_role === 'Admin' || currentUser.id === id
 
   const getRoleBadge = (role: string) => {
     const roleColors = {

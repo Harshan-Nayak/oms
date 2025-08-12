@@ -6,13 +6,15 @@ import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
 interface PurchaseOrderEditPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 export default async function PurchaseOrderEditPage({ params }: PurchaseOrderEditPageProps) {
   const supabase = createServerSupabaseClient()
+  
+  const resolvedParams = await params
   
   const { data: { user } } = await supabase.auth.getUser()
   
@@ -40,7 +42,7 @@ export default async function PurchaseOrderEditPage({ params }: PurchaseOrderEdi
   const { data: purchaseOrder, error } = await supabase
     .from('purchase_orders')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', resolvedParams.id)
     .single()
 
   if (error || !purchaseOrder) {
@@ -50,7 +52,7 @@ export default async function PurchaseOrderEditPage({ params }: PurchaseOrderEdi
   // Fetch ledgers for dropdown
   const { data: ledgers } = await supabase
     .from('ledgers')
-    .select('ledger_id, business_name, contact_person_name, mobile_number, email, address, city, state, gst_number')
+    .select('*')
     .order('business_name', { ascending: true })
 
   return (

@@ -6,14 +6,16 @@ import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
 interface UserEditPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 export default async function UserEditPage({ params }: UserEditPageProps) {
   const supabase = createServerSupabaseClient()
   
+  const { id } = await params
+
   const { data: { user: currentUser } } = await supabase.auth.getUser()
   
   if (!currentUser) {
@@ -32,7 +34,7 @@ export default async function UserEditPage({ params }: UserEditPageProps) {
   }
 
   // Only admins can edit other users, users can edit their own profile
-  if (currentProfile.user_role !== 'Admin' && currentUser.id !== params.id) {
+  if (currentProfile.user_role !== 'Admin' && currentUser.id !== id) {
     redirect('/dashboard/users/manage')
   }
 
@@ -40,14 +42,14 @@ export default async function UserEditPage({ params }: UserEditPageProps) {
   const { data: userProfile, error } = await supabase
     .from('profiles')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
 
   if (error || !userProfile) {
     notFound()
   }
 
-  const isOwnProfile = currentUser.id === params.id
+  const isOwnProfile = currentUser.id === id
 
   return (
     <div className="space-y-6">
