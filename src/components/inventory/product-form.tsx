@@ -16,6 +16,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, Upload, X } from 'lucide-react'
 import { Database } from '@/types/database'
 import Image from 'next/image'
+import { useToast } from '@/hooks/use-toast'
 
 type Product = Database['public']['Tables']['products']['Insert']
 
@@ -45,6 +46,7 @@ interface ProductFormProps {
 
 export function ProductForm({ userId, product, isEdit = false }: ProductFormProps) {
   const router = useRouter()
+  const { showToast } = useToast()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -155,8 +157,10 @@ export function ProductForm({ userId, product, isEdit = false }: ProductFormProp
 
         if (updateError) {
           setError('Failed to update product. Please try again.')
+          showToast('Failed to update product', 'error')
           return
         }
+        showToast('Product updated successfully', 'success')
       } else {
         const { error: insertError } = await supabase
           .from('products')
@@ -164,14 +168,17 @@ export function ProductForm({ userId, product, isEdit = false }: ProductFormProp
 
         if (insertError) {
           setError('Failed to create product. Please try again.')
+          showToast('Failed to create product', 'error')
           return
         }
+        showToast('Product created successfully', 'success')
       }
 
       router.push('/dashboard/inventory/products')
       router.refresh()
     } catch (err) {
       setError('An unexpected error occurred. Please try again.')
+      showToast('An unexpected error occurred', 'error')
       console.error('Error saving product:', err)
     } finally {
       setLoading(false)

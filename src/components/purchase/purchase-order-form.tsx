@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, Plus, Trash2 } from 'lucide-react'
 import { Database } from '@/types/database'
+import { useToast } from '@/hooks/use-toast'
 
 type Ledger = Database['public']['Tables']['ledgers']['Row']
 
@@ -46,6 +47,7 @@ interface PurchaseOrderFormProps {
 
 export function PurchaseOrderForm({ userId, ledgers }: PurchaseOrderFormProps) {
   const router = useRouter()
+  const { showToast } = useToast()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [selectedLedger, setSelectedLedger] = useState<Ledger | null>(null)
@@ -160,13 +162,16 @@ export function PurchaseOrderForm({ userId, ledgers }: PurchaseOrderFormProps) {
 
       if (insertError) {
         setError('Failed to create purchase order. Please try again.')
+        showToast('Failed to create purchase order.', 'error')
         return
       }
 
+      showToast('Purchase order created successfully!', 'success')
       router.push('/dashboard/purchase/manage')
       router.refresh()
     } catch (err) {
       setError('An unexpected error occurred. Please try again.')
+      showToast('An unexpected error occurred.', 'error')
       console.error('Error creating purchase order:', err)
     } finally {
       setLoading(false)

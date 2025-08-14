@@ -32,6 +32,7 @@ import { Loader2, Upload, X } from 'lucide-react'
 import { Database } from '@/types/database'
 import { generateLedgerId } from '@/lib/utils'
 import Image from 'next/image'
+import { useToast } from '@/hooks/use-toast'
 
 type Ledger = Database['public']['Tables']['ledgers']['Insert'] & { updated_at?: string }
 
@@ -77,6 +78,7 @@ interface LedgerFormProps {
 
 export function LedgerForm({ userId, ledger, isEdit = false }: LedgerFormProps) {
   const router = useRouter()
+  const { showToast } = useToast()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [logoFile, setLogoFile] = useState<File | null>(null)
@@ -199,6 +201,7 @@ export function LedgerForm({ userId, ledger, isEdit = false }: LedgerFormProps) 
           setError(`Failed to update ledger: ${updateError.message}`)
           return
         }
+        showToast('Ledger updated successfully!', 'success')
       } else {
         // INSERT operation
         const ledgerInsertData: Ledger = {
@@ -215,8 +218,10 @@ export function LedgerForm({ userId, ledger, isEdit = false }: LedgerFormProps) 
         if (insertError) {
           console.error('Supabase insert error:', insertError)
           setError(`Failed to create ledger: ${insertError.message}`)
+          showToast(`Error: ${insertError.message}`, 'error')
           return
         }
+        showToast('Ledger created successfully!', 'success')
       }
 
       // Redirect and refresh on success
@@ -226,6 +231,7 @@ export function LedgerForm({ userId, ledger, isEdit = false }: LedgerFormProps) 
     } catch (err) {
       console.error('Error saving ledger:', err)
       setError('An unexpected error occurred. Please try again.')
+      showToast('An unexpected error occurred.', 'error')
     } finally {
       setLoading(false)
     }

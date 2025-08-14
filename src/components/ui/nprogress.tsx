@@ -24,19 +24,28 @@ export function PageProgressBar() {
 
     const handleMutation: MutationCallback = () => {
       const anchorElements = document.querySelectorAll('a');
-      anchorElements.forEach(anchor => anchor.addEventListener('click', handleAnchorClick));
+      anchorElements.forEach(anchor => {
+        if (!anchor.dataset.nprogressHandled) {
+          anchor.addEventListener('click', handleAnchorClick);
+          anchor.dataset.nprogressHandled = 'true';
+        }
+      });
     };
 
     const mutationObserver = new MutationObserver(handleMutation);
-    mutationObserver.observe(document, { childList: true, subtree: true });
+    mutationObserver.observe(document.body, { childList: true, subtree: true });
 
-    window.history.pushState = new Proxy(window.history.pushState, {
-      apply: (target, thisArg, argArray: [unknown, string, string | URL | null | undefined]) => {
-        NProgress.done();
-        return target.apply(thisArg, argArray);
-      },
-    });
-  });
+    // Initial run
+    handleMutation([], mutationObserver);
+
+    return () => {
+      mutationObserver.disconnect();
+      document.querySelectorAll('a').forEach(anchor => {
+        anchor.removeEventListener('click', handleAnchorClick);
+        delete anchor.dataset.nprogressHandled;
+      });
+    };
+  }, []);
 
   return null;
 }
