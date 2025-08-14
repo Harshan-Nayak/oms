@@ -30,7 +30,8 @@ import {
   Eye,
   FileText,
   Truck,
-  Calendar
+  Calendar,
+  History
 } from 'lucide-react'
 import { Database, Json } from '@/types/database'
 import { formatDate, formatCurrency } from '@/lib/utils'
@@ -206,6 +207,45 @@ export function WeaverChallanContent({
         </CardContent>
       </Card>
 
+        {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-blue-600">
+              {totalCount}
+            </div>
+            <div className="text-sm text-gray-600">Total Challans</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-green-600">
+              {challans.reduce((sum, challan) => sum + challan.total_grey_mtr, 0).toFixed(2)}
+            </div>
+            <div className="text-sm text-gray-600">Total Grey Mtr</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-purple-600">
+              {challans.reduce((sum, challan) => sum + challan.taka, 0)}
+            </div>
+            <div className="text-sm text-gray-600">Total Taka</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-orange-600">
+              {challans.filter(c => c.transport_name).length}
+            </div>
+            <div className="text-sm text-gray-600">With Transport</div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Challans Table */}
       <Card>
         <CardHeader>
@@ -296,7 +336,7 @@ export function WeaverChallanContent({
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      <DropdownMenuContent align="end" className=' bg-white ' >
                         <DropdownMenuItem
                           onClick={() => router.push(`/dashboard/production/weaver-challan/${challan.id}`)}
                         >
@@ -317,6 +357,12 @@ export function WeaverChallanContent({
                             Edit
                           </DropdownMenuItem>
                         )}
+                        <DropdownMenuItem
+                          onClick={() => router.push(`/dashboard/production/weaver-challan/${challan.id}/logs`)}
+                        >
+                          <History className="mr-2 h-4 w-4" />
+                          Change Logs
+                        </DropdownMenuItem>
                         {canEdit && (
                           <DropdownMenuItem 
                             className="text-red-600"
@@ -346,44 +392,7 @@ export function WeaverChallanContent({
         </CardContent>
       </Card>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold text-blue-600">
-              {totalCount}
-            </div>
-            <div className="text-sm text-gray-600">Total Challans</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold text-green-600">
-              {challans.reduce((sum, challan) => sum + challan.total_grey_mtr, 0).toFixed(2)}
-            </div>
-            <div className="text-sm text-gray-600">Total Grey Mtr</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold text-purple-600">
-              {challans.reduce((sum, challan) => sum + challan.taka, 0)}
-            </div>
-            <div className="text-sm text-gray-600">Total Taka</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold text-orange-600">
-              {challans.filter(c => c.transport_name).length}
-            </div>
-            <div className="text-sm text-gray-600">With Transport</div>
-          </CardContent>
-        </Card>
-      </div>
+    
     </div>
   )
 }
