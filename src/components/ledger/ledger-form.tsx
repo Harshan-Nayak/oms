@@ -12,6 +12,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog'
 import { Loader2, Upload, X } from 'lucide-react'
 import { Database } from '@/types/database'
 import { generateLedgerId } from '@/lib/utils'
@@ -46,6 +55,7 @@ export function LedgerForm({ userId, ledger, isEdit = false }: LedgerFormProps) 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [isAlertOpen, setIsAlertOpen] = useState(false)
   const [logoPreview, setLogoPreview] = useState<string | null>(
     ledger?.business_logo || null
   )
@@ -74,16 +84,27 @@ export function LedgerForm({ userId, ledger, isEdit = false }: LedgerFormProps) 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      if (file.type.startsWith('image/')) {
-        setLogoFile(file)
-        const reader = new FileReader()
-        reader.onload = (e) => {
-          setLogoPreview(e.target?.result as string)
-        }
-        reader.readAsDataURL(file)
-      } else {
-        setError('Please select a valid image file')
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg']
+      if (!allowedTypes.includes(file.type)) {
+        setError('Invalid file type. Please select a JPG, JPEG, or PNG image.')
+        setIsAlertOpen(true)
+        return
       }
+
+      const maxSizeInMB = 3
+      if (file.size > maxSizeInMB * 1024 * 1024) {
+        setError(`File size exceeds ${maxSizeInMB}MB. Please choose a smaller file.`)
+        setIsAlertOpen(true)
+        return
+      }
+
+      setLogoFile(file)
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setLogoPreview(e.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+      setError('') // Clear any previous errors
     }
   }
 
@@ -176,9 +197,17 @@ export function LedgerForm({ userId, ledger, isEdit = false }: LedgerFormProps) 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
+        <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Upload Error</AlertDialogTitle>
+              <AlertDialogDescription>{error}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={() => setIsAlertOpen(false)}>OK</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
 
       {/* Business Logo */}
