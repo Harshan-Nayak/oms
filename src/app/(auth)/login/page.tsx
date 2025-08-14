@@ -118,11 +118,11 @@ export default function LoginPage() {
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="role">Select Role</Label>
-                <Select value={role} onValueChange={setRole} required>
+                <Select value={role}  onValueChange={setRole} required>
                   <SelectTrigger>
                     <SelectValue placeholder="-- Select Role --" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className=" bg-white " >
                     <SelectItem value="User">User</SelectItem>
                     <SelectItem value="Manager">Manager</SelectItem>
                     <SelectItem value="Admin">Admin</SelectItem>
