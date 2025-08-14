@@ -75,7 +75,7 @@ export function ProductsContent({ products, totalCount, filterOptions, userRole 
     return matchesSearch && matchesCategory && matchesColor && matchesMaterial && matchesStatus
   })
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string | null) => {
     return status === 'Active' ? (
       <Badge variant="default" className="bg-green-100 text-green-700">Active</Badge>
     ) : (

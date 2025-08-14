@@ -81,7 +81,7 @@ export function PurchaseOrderEditForm({ purchaseOrder, ledgers, userId }: Purcha
       delivery_date: purchaseOrder.delivery_date || '',
       description: purchaseOrder.description || '',
       terms_conditions: purchaseOrder.terms_conditions || '',
-      status: purchaseOrder.status,
+      status: (purchaseOrder.status as 'Draft' | 'Sent' | 'Confirmed' | 'Partial' | 'Completed' | 'Cancelled') || 'Draft',
       items: parseItems(purchaseOrder.items),
     },
   })

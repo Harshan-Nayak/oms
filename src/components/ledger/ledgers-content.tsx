@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -135,7 +135,7 @@ export function LedgersContent({ ledgers, totalCount, userRole }: LedgersContent
       }
     })
     
-    setSelectedLedgerLogs(logsWithEmails as any)
+    setSelectedLedgerLogs(logsWithEmails as LedgerLog[])
   }
 
   return (

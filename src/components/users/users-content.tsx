@@ -96,23 +96,26 @@ export function UsersContent({ users, totalCount, currentUserId }: UsersContentP
     }
   }
 
-  const getRoleBadge = (role: string) => {
-    const roleColors = {
+  const getRoleBadge = (role: string | null) => {
+    const roleDisplay = role || 'Unassigned'
+    const roleColors: Record<string, string> = {
       'Admin': 'bg-red-100 text-red-700',
       'Manager': 'bg-blue-100 text-blue-700',
-      'User': 'bg-green-100 text-green-700'
+      'User': 'bg-green-100 text-green-700',
+      'Unassigned': 'bg-gray-100 text-gray-700'
     }
     
     return (
-      <Badge variant="secondary" className={roleColors[role as keyof typeof roleColors]}>
+      <Badge variant="secondary" className={roleColors[roleDisplay]}>
         <Shield className="h-3 w-3 mr-1" />
-        {role}
+        {roleDisplay}
       </Badge>
     )
   }
 
-  const getStatusBadge = (status: string) => {
-    return status === 'Active' ? (
+  const getStatusBadge = (status: string | null) => {
+    const statusDisplay = status || 'Inactive'
+    return statusDisplay === 'Active' ? (
       <Badge variant="default" className="bg-green-100 text-green-700">
         <UserCheck className="h-3 w-3 mr-1" />
         Active
@@ -131,7 +134,8 @@ export function UsersContent({ users, totalCount, currentUserId }: UsersContentP
 
   const getRoleCounts = () => {
     const counts = users.reduce((acc, user) => {
-      acc[user.user_role] = (acc[user.user_role] || 0) + 1
+      const role = user.user_role || 'Unassigned'
+      acc[role] = (acc[role] || 0) + 1
       return acc
     }, {} as Record<string, number>)
     return counts
@@ -139,7 +143,8 @@ export function UsersContent({ users, totalCount, currentUserId }: UsersContentP
 
   const getStatusCounts = () => {
     const counts = users.reduce((acc, user) => {
-      acc[user.user_status] = (acc[user.user_status] || 0) + 1
+      const status = user.user_status || 'Inactive'
+      acc[status] = (acc[status] || 0) + 1
       return acc
     }, {} as Record<string, number>)
     return counts
