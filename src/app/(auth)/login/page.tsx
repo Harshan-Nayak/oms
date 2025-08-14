@@ -192,12 +192,12 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            <div className="text-center text-sm mt-4">
+            {/* <div className="text-center text-sm mt-4">
               Don&apos;t have an account?{' '}
               <Link href="/signup" className="text-blue-600 hover:underline">
                 Sign up here
               </Link>
-            </div>
+            </div> */}
 
             <div className="text-center text-sm text-gray-600 mt-6">
               Made with ❤️{' '}

@@ -53,13 +53,6 @@ export function Sidebar({ profile, isOpen, onClose }: SidebarProps) {
       href: '/dashboard'
     },
     {
-      title: 'Inventory',
-      icon: <Package className="h-5 w-5" />,
-      items: [
-        { title: 'Products', href: '/dashboard/inventory/products' }
-      ]
-    },
-    {
       title: 'Ledger',
       icon: <Book className="h-5 w-5" />,
       items: [
@@ -72,6 +65,13 @@ export function Sidebar({ profile, isOpen, onClose }: SidebarProps) {
       icon: <Factory className="h-5 w-5" />,
       items: [
         { title: 'Weaver Challan', href: '/dashboard/production/weaver-challan' }
+      ]
+    },
+    {
+      title: 'Inventory',
+      icon: <Package className="h-5 w-5" />,
+      items: [
+        { title: 'Products', href: '/dashboard/inventory/products' }
       ]
     },
     {

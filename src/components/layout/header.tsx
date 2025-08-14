@@ -62,9 +62,9 @@ export function Header({ profile, onMenuClick }: HeaderProps) {
             <Menu className="h-5 w-5" />
           </Button>
           
-          <div>
+          {/* <div>
             <h1 className="text-xl font-semibold text-gray-900">
-              Welcome back, {profile.first_name || 'User'}!
+              Welcome , {profile.first_name || 'User'}!
             </h1>
             <p className="text-sm text-gray-500">
               {new Date().toLocaleDateString('en-US', { 
@@ -74,7 +74,7 @@ export function Header({ profile, onMenuClick }: HeaderProps) {
                 day: 'numeric' 
               })}
             </p>
-          </div>
+          </div> */}
         </div>
 
         <div className="flex items-center space-x-4">
@@ -101,7 +101,7 @@ export function Header({ profile, onMenuClick }: HeaderProps) {
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end">
+            <DropdownMenuContent className="w-56 bg-white " align="end">
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem>
