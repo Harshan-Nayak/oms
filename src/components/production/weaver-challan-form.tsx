@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { LedgerSelectModal } from './ledger-select-modal'
 import { Loader2, Plus, Trash2, Building2 } from 'lucide-react'
 import { Database } from '@/types/database'
 import { generateBatchNumber, generateChallanNumber } from '@/lib/utils'
@@ -28,7 +29,6 @@ const qualityDetailSchema = z.object({
 
 const weaverChallanSchema = z.object({
   challan_date: z.string().min(1, 'Challan date is required'),
-  ms_party_name: z.string().min(1, 'Party name is required'),
   ledger_id: z.string().min(1, 'Ledger selection is required'),
   delivery_at: z.string().optional(),
   bill_no: z.string().optional(),
@@ -75,8 +75,7 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
   } = useForm<WeaverChallanFormData>({
     resolver: zodResolver(weaverChallanSchema),
     defaultValues: {
-      challan_date: new Date().toISOString().split('T')[0],
-      ms_party_name: '',
+      challan_date: '', // Set by useEffect
       ledger_id: '',
       delivery_at: '',
       bill_no: '',
@@ -90,6 +89,19 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
       quality_details: [{ quality_name: '', rate: 0, grey_mtr: 0 }],
     },
   })
+
+  useEffect(() => {
+    const today = new Date()
+    const options: Intl.DateTimeFormatOptions = {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      timeZone: 'Asia/Kolkata',
+    }
+    // Using 'sv-SE' locale formats the date as YYYY-MM-DD
+    const formatter = new Intl.DateTimeFormat('sv-SE', options)
+    setValue('challan_date', formatter.format(today))
+  }, [setValue])
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -173,7 +185,7 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
         challan_date: data.challan_date,
         batch_number: batchNumber,
         challan_no: challanNumber,
-        ms_party_name: data.ms_party_name,
+        ms_party_name: selectedLedger?.business_name || '',
         ledger_id: data.ledger_id,
         delivery_at: data.delivery_at || null,
         bill_no: data.bill_no || null,
@@ -250,42 +262,23 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
                 id="challan_date"
                 type="date"
                 {...register('challan_date')}
+                readOnly
+                className="bg-gray-100 cursor-not-allowed"
               />
               {errors.challan_date && (
                 <p className="text-sm text-red-600">{errors.challan_date.message}</p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="ms_party_name">MS Party Name *</Label>
-              <Input
-                id="ms_party_name"
-                {...register('ms_party_name')}
-                placeholder="Enter party name"
-              />
-              {errors.ms_party_name && (
-                <p className="text-sm text-red-600">{errors.ms_party_name.message}</p>
-              )}
-            </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="ledger_id">Select Ledger *</Label>
-            <Select value={watch('ledger_id')} onValueChange={handleLedgerSelect}>
-              <SelectTrigger>
-                <SelectValue placeholder="-- Select Ledger --" />
-              </SelectTrigger>
-              <SelectContent>
-                {ledgers.map((ledger) => (
-                  <SelectItem key={ledger.ledger_id} value={ledger.ledger_id}>
-                    <div>
-                      <div className="font-medium">{ledger.business_name}</div>
-                      <div className="text-sm text-gray-500">{ledger.ledger_id}</div>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <LedgerSelectModal ledgers={ledgers} onLedgerSelect={handleLedgerSelect}>
+              <Button type="button" variant="outline" className="w-full justify-start">
+                {selectedLedger ? selectedLedger.business_name : '-- Select Ledger --'}
+              </Button>
+            </LedgerSelectModal>
             {errors.ledger_id && (
               <p className="text-sm text-red-600">{errors.ledger_id.message}</p>
             )}

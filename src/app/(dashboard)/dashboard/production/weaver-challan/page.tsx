@@ -37,7 +37,6 @@ export default async function WeaverChallanPage() {
       )
     `, { count: 'exact' })
     .order('created_at', { ascending: false })
-    .range(0, 19) // First 20 challans
 
   // Fetch ledgers for dropdown
   const { data: ledgers } = await supabase
