@@ -31,15 +31,33 @@ type Ledger = Database['public']['Tables']['ledgers']['Insert']
 const ledgerSchema = z.object({
   business_name: z.string().min(1, 'Business name is required'),
   contact_person_name: z.string().optional(),
-  mobile_number: z.string().optional(),
-  email: z.string().email('Invalid email').optional().or(z.literal('')),
+  mobile_number: z.string()
+    .optional()
+    .refine((value) => !value || /^\d{10}$/.test(value), {
+      message: 'Mobile number must be 10 digits',
+    }),
+  email: z.string()
+    .email('Invalid email')
+    .optional()
+    .or(z.literal('')),
   address: z.string().optional(),
   city: z.string().optional(),
   district: z.string().optional(),
   state: z.string().optional(),
   country: z.string(),
   zip_code: z.string().optional(),
-  gst_number: z.string().optional(),
+  gst_number: z.string()
+    .optional()
+    .refine(
+      (value) =>
+        !value ||
+        /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(
+          value.toUpperCase()
+        ),
+      {
+        message: 'Invalid GST number format',
+      }
+    ),
 })
 
 type LedgerFormData = z.infer<typeof ledgerSchema>
@@ -294,6 +312,9 @@ export function LedgerForm({ userId, ledger, isEdit = false }: LedgerFormProps) 
                 {...register('gst_number')}
                 placeholder="Enter GST number"
               />
+              {errors.gst_number && (
+                <p className="text-sm text-red-600">{errors.gst_number.message}</p>
+              )}
             </div>
           </div>
         </CardContent>
@@ -314,6 +335,9 @@ export function LedgerForm({ userId, ledger, isEdit = false }: LedgerFormProps) 
                 {...register('mobile_number')}
                 placeholder="Enter mobile number"
               />
+              {errors.mobile_number && (
+               <p className="text-sm text-red-600">{errors.mobile_number.message}</p>
+             )}
             </div>
 
             <div className="space-y-2">
