@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -29,6 +29,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
+import {
   Plus,
   Search,
   MoreHorizontal,
@@ -38,18 +46,20 @@ import {
   Phone,
   Mail,
   MapPin,
-  History
+  History,
+  Filter,
+  X,
 } from 'lucide-react'
 import { Database } from '@/types/database'
 import { formatDate } from '@/lib/utils'
 import Image from 'next/image'
 
 type Ledger = Database['public']['Tables']['ledgers']['Row'] & {
-  profiles: { email: string } | null;
-};
+  profiles: { email: string } | null
+}
 type LedgerLog = Database['public']['Tables']['ledger_logs']['Row'] & {
-  profiles: { email: string } | null;
-};
+  profiles: { email: string } | null
+}
 type UserRole = Database['public']['Tables']['profiles']['Row']['user_role']
 
 interface LedgersContentProps {
@@ -60,22 +70,76 @@ interface LedgersContentProps {
 
 export function LedgersContent({ ledgers, totalCount, userRole }: LedgersContentProps) {
   const router = useRouter()
-  const [searchTerm, setSearchTerm] = useState('')
+  const searchParams = useSearchParams()
+  
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '')
+  const [filters, setFilters] = useState({
+    state: searchParams.get('state') || '',
+    city: searchParams.get('city') || '',
+    fromDate: searchParams.get('fromDate') || '',
+    toDate: searchParams.get('toDate') || '',
+  })
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [isLogModalOpen, setIsLogModalOpen] = useState(false)
   const [selectedLedgerLogs, setSelectedLedgerLogs] = useState<LedgerLog[]>([])
   const [selectedLedger, setSelectedLedger] = useState<Ledger | null>(null)
-  
+  const [states, setStates] = useState<string[]>([])
+  const [cities, setCities] = useState<string[]>([])
+
   const canEdit = userRole === 'Admin' || userRole === 'Manager'
 
-  const filteredLedgers = ledgers.filter(ledger => {
-    const matchesSearch = !searchTerm || 
-      ledger.business_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ledger.ledger_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (ledger.contact_person_name && ledger.contact_person_name.toLowerCase().includes(searchTerm.toLowerCase()))
+  useEffect(() => {
+    const fetchStates = async () => {
+      const { data, error } = await supabase.from('ledgers').select('state').neq('state', '')
+      if (data) {
+        const uniqueStates = [...new Set(data.map(item => item.state).filter(Boolean))] as string[]
+        setStates(uniqueStates)
+      }
+    }
+    fetchStates()
+  }, [])
 
-    return matchesSearch
-  })
+  useEffect(() => {
+    if (filters.state) {
+      const fetchCities = async () => {
+        const { data, error } = await supabase.from('ledgers').select('city').eq('state', filters.state).neq('city', '')
+        if (data) {
+          const uniqueCities = [...new Set(data.map(item => item.city).filter(Boolean))] as string[]
+          setCities(uniqueCities)
+        }
+      }
+      fetchCities()
+    } else {
+      setCities([])
+    }
+  }, [filters.state])
+
+  const handleFilterChange = (key: string, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }))
+  }
+
+  const applyFilters = () => {
+    const params = new URLSearchParams(searchParams)
+    params.set('page', '1')
+    if (searchTerm) params.set('search', searchTerm)
+    else params.delete('search')
+    
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) {
+        params.set(key, value)
+      } else {
+        params.delete(key)
+      }
+    })
+    
+    router.push(`/dashboard/ledger/list?${params.toString()}`)
+  }
+
+  const clearFilters = () => {
+    setSearchTerm('')
+    setFilters({ state: '', city: '', fromDate: '', toDate: '' })
+    router.push('/dashboard/ledger/list')
+  }
 
   const handleDeleteLedger = async (ledgerId: string, businessName: string) => {
     if (!confirm(`Are you sure you want to delete "${businessName}"? This action cannot be undone.`)) {
@@ -156,33 +220,89 @@ export function LedgersContent({ ledgers, totalCount, userRole }: LedgersContent
         )}
       </div>
 
-      {/* Search */}
+      {/* Search and Filters */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
-            <Search className="h-5 w-5 mr-2" />
-            Search Ledgers
+            <Filter className="h-5 w-5 mr-2" />
+            Filter & Search Ledgers
           </CardTitle>
           <CardDescription>
-            Search by business name, ledger ID, or contact person
+            Use filters to narrow down your search results.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Search ledgers..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="search">Search</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  id="search"
+                  placeholder="By name, ID, contact..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="state">State</Label>
+              <Select value={filters.state} onValueChange={(value) => handleFilterChange('state', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select State" />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  {states.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="city">City</Label>
+              <Select value={filters.city} onValueChange={(value) => handleFilterChange('city', value)} disabled={!filters.state}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select City" />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  {cities.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="fromDate">From Date</Label>
+              <Input
+                id="fromDate"
+                type="date"
+                value={filters.fromDate}
+                onChange={(e) => handleFilterChange('fromDate', e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="toDate">To Date</Label>
+              <Input
+                id="toDate"
+                type="date"
+                value={filters.toDate}
+                onChange={(e) => handleFilterChange('toDate', e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={clearFilters}>
+              <X className="h-4 w-4 mr-2" />
+              Clear
+            </Button>
+            <Button onClick={applyFilters}>
+              <Search className="h-4 w-4 mr-2" />
+              Apply
+            </Button>
           </div>
         </CardContent>
       </Card>
 
       {/* Ledgers Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredLedgers.map((ledger) => (
+        {ledgers.map((ledger) => (
           <Card key={ledger.ledger_id} className="hover:shadow-md transition-shadow">
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
@@ -296,7 +416,7 @@ export function LedgersContent({ ledgers, totalCount, userRole }: LedgersContent
         ))}
       </div>
 
-      {filteredLedgers.length === 0 && (
+      {ledgers.length === 0 && (
         <Card>
           <CardContent className="text-center py-8">
             <div className="text-gray-500">No ledgers found</div>
@@ -308,7 +428,7 @@ export function LedgersContent({ ledgers, totalCount, userRole }: LedgersContent
       )}
 
       {/* Load More */}
-      {filteredLedgers.length < totalCount && (
+      {ledgers.length < totalCount && (
         <div className="text-center">
           <Button variant="outline">
             Load More Ledgers
