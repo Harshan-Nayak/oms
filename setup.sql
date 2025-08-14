@@ -58,8 +58,7 @@ CREATE TABLE public.ledgers (
   gst_number TEXT,
   created_by UUID REFERENCES auth.users(id),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  edit_logs TEXT
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Create weaver_challans table
@@ -82,8 +81,7 @@ CREATE TABLE public.weaver_challans (
   quality_details JSONB,
   created_by UUID REFERENCES auth.users(id),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  edit_logs TEXT
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Create purchase_orders table
@@ -104,12 +102,22 @@ CREATE TABLE public.purchase_orders (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Create ledger_logs table
+CREATE TABLE public.ledger_logs (
+  id SERIAL PRIMARY KEY,
+  ledger_id TEXT REFERENCES public.ledgers(ledger_id) ON DELETE CASCADE,
+  changed_by UUID REFERENCES auth.users(id),
+  changes JSONB,
+  changed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Enable RLS on all tables
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ledgers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.weaver_challans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.purchase_orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ledger_logs ENABLE ROW LEVEL SECURITY;
 
 -- Profiles policies
 CREATE POLICY "Users can view own profile" ON public.profiles
@@ -159,6 +167,27 @@ CREATE POLICY "Admin and Manager can insert ledgers" ON public.ledgers
 CREATE POLICY "Admin and Manager can update ledgers" ON public.ledgers
   FOR UPDATE TO authenticated
   USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid()
+      AND user_role IN ('Admin', 'Manager')
+    )
+  );
+
+-- Ledger Logs policies
+CREATE POLICY "Admin and Manager can view ledger logs" ON public.ledger_logs
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid()
+      AND user_role IN ('Admin', 'Manager')
+    )
+  );
+
+CREATE POLICY "Admin and Manager can insert ledger logs" ON public.ledger_logs
+  FOR INSERT TO authenticated
+  WITH CHECK (
     EXISTS (
       SELECT 1 FROM public.profiles
       WHERE id = auth.uid()
@@ -253,10 +282,38 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
+-- Function to log ledger changes
+CREATE OR REPLACE FUNCTION public.log_ledger_changes()
+RETURNS TRIGGER AS $$
+DECLARE
+  changes jsonb := '{}'::jsonb;
+  r record;
+BEGIN
+  FOR r IN SELECT * FROM jsonb_each(to_jsonb(NEW))
+  LOOP
+    IF r.key <> 'updated_at' AND r.value <> (to_jsonb(OLD) -> r.key) THEN
+      changes := changes || jsonb_build_object(r.key, jsonb_build_object('old', (to_jsonb(OLD) -> r.key), 'new', r.value));
+    END IF;
+  END LOOP;
+
+  IF changes <> '{}'::jsonb THEN
+    INSERT INTO public.ledger_logs (ledger_id, changed_by, changes)
+    VALUES (NEW.ledger_id, auth.uid(), changes);
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY INVOKER;
+
+-- Trigger to log ledger changes
+CREATE TRIGGER on_ledger_update
+  AFTER UPDATE ON public.ledgers
+  FOR EACH ROW EXECUTE FUNCTION public.log_ledger_changes();
+
 -- Set up first admin user (UPDATE - replace email with your actual email)
 -- Note: This should be run AFTER you've signed up with your email in the app
 -- UPDATE public.profiles
--- SET user_role = 'Admin', 
---     first_name = 'Admin', 
+-- SET user_role = 'Admin',
+--     first_name = 'Admin',
 --     last_name = 'User'
 -- WHERE email = 'your-email@example.com';

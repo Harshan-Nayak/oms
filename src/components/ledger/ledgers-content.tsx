@@ -1,13 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
+import {
   Table,
   TableBody,
   TableCell,
@@ -15,28 +22,32 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { 
-  Plus, 
-  Search, 
-  MoreHorizontal, 
-  Edit, 
-  Trash2, 
+import {
+  Plus,
+  Search,
+  MoreHorizontal,
+  Edit,
+  Trash2,
   Eye,
   Phone,
   Mail,
-  MapPin
+  MapPin,
+  History
 } from 'lucide-react'
 import { Database } from '@/types/database'
 import { formatDate } from '@/lib/utils'
 import Image from 'next/image'
 
 type Ledger = Database['public']['Tables']['ledgers']['Row'] & {
+  profiles: { email: string } | null;
+};
+type LedgerLog = Database['public']['Tables']['ledger_logs']['Row'] & {
   profiles: { email: string } | null;
 };
 type UserRole = Database['public']['Tables']['profiles']['Row']['user_role']
@@ -51,6 +62,9 @@ export function LedgersContent({ ledgers, totalCount, userRole }: LedgersContent
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [isLogModalOpen, setIsLogModalOpen] = useState(false)
+  const [selectedLedgerLogs, setSelectedLedgerLogs] = useState<LedgerLog[]>([])
+  const [selectedLedger, setSelectedLedger] = useState<Ledger | null>(null)
   
   const canEdit = userRole === 'Admin' || userRole === 'Manager'
 
@@ -89,6 +103,39 @@ export function LedgersContent({ ledgers, totalCount, userRole }: LedgersContent
     } finally {
       setDeletingId(null)
     }
+  }
+
+  const handleShowLogs = async (ledger: Ledger) => {
+    setSelectedLedger(ledger)
+    setIsLogModalOpen(true)
+
+    const { data: logs, error } = await supabase
+      .from('ledger_logs')
+      .select(`*`)
+      .eq('ledger_id', ledger.ledger_id)
+      .order('changed_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching ledger logs:', error)
+      alert('Failed to fetch change logs. Please try again.')
+      return
+    }
+
+    const userIds = logs.map(log => log.changed_by).filter(Boolean) as string[];
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, email')
+      .in('id', userIds)
+
+    const logsWithEmails = logs.map(log => {
+      const profile = profiles?.find(p => p.id === log.changed_by)
+      return {
+        ...log,
+        profiles: profile ? { email: profile.email } : null
+      }
+    })
+    
+    setSelectedLedgerLogs(logsWithEmails as any)
   }
 
   return (
@@ -184,7 +231,13 @@ export function LedgersContent({ ledgers, totalCount, userRole }: LedgersContent
                       </DropdownMenuItem>
                     )}
                     {canEdit && (
-                      <DropdownMenuItem 
+                      <DropdownMenuItem onClick={() => handleShowLogs(ledger)}>
+                        <History className="mr-2 h-4 w-4" />
+                        Change Logs
+                      </DropdownMenuItem>
+                    )}
+                    {canEdit && (
+                      <DropdownMenuItem
                         className="text-red-600"
                         onClick={() => handleDeleteLedger(ledger.ledger_id, ledger.business_name)}
                         disabled={deletingId === ledger.ledger_id}
@@ -262,6 +315,46 @@ export function LedgersContent({ ledgers, totalCount, userRole }: LedgersContent
           </Button>
         </div>
       )}
+
+      {/* Change Log Modal */}
+      <Dialog open={isLogModalOpen} onOpenChange={setIsLogModalOpen}>
+        <DialogContent className="max-w-3xl bg-white">
+          <DialogHeader>
+            <DialogTitle>Change Log for {selectedLedger?.business_name}</DialogTitle>
+            <DialogDescription>
+              Showing all changes made to this ledger.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 max-h-[60vh] overflow-y-auto">
+            {selectedLedgerLogs.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Changed By</TableHead>
+                    <TableHead>Changed At</TableHead>
+                    <TableHead>Changes</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {selectedLedgerLogs.map((log) => (
+                    <TableRow key={log.id}>
+                      <TableCell>{log.profiles?.email || 'N/A'}</TableCell>
+                      <TableCell>{formatDate(log.changed_at)}</TableCell>
+                      <TableCell>
+                        <pre className="whitespace-pre-wrap bg-gray-100 p-2 rounded-md text-xs">
+                          {JSON.stringify(log.changes, null, 2)}
+                        </pre>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <p className="text-center text-gray-500 py-8">No changes have been logged for this ledger yet.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
