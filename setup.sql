@@ -156,6 +156,16 @@ CREATE POLICY "Admin and Manager can insert ledgers" ON public.ledgers
     )
   );
 
+CREATE POLICY "Admin and Manager can update ledgers" ON public.ledgers
+  FOR UPDATE TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid()
+      AND user_role IN ('Admin', 'Manager')
+    )
+  );
+
 -- Purchase Orders policies
 CREATE POLICY "All authenticated users can view purchase orders" ON public.purchase_orders
   FOR SELECT TO authenticated USING (true);

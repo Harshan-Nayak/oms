@@ -31,7 +31,7 @@ export default async function CreateLedgerPage() {
         </p>
       </div>
 
-      <LedgerForm userId={user.id} />
+      <LedgerForm userId={user.id} isEdit={false} />
     </div>
   )
 }

@@ -36,7 +36,9 @@ import { Database } from '@/types/database'
 import { formatDate } from '@/lib/utils'
 import Image from 'next/image'
 
-type Ledger = Database['public']['Tables']['ledgers']['Row']
+type Ledger = Database['public']['Tables']['ledgers']['Row'] & {
+  profiles: { email: string } | null;
+};
 type UserRole = Database['public']['Tables']['profiles']['Row']['user_role']
 
 interface LedgersContentProps {
@@ -166,7 +168,7 @@ export function LedgersContent({ ledgers, totalCount, userRole }: LedgersContent
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+                  <DropdownMenuContent align="end" className='bg-white' >
                     <DropdownMenuItem
                       onClick={() => router.push(`/dashboard/ledger/${ledger.ledger_id}`)}
                     >
@@ -233,8 +235,8 @@ export function LedgersContent({ ledgers, totalCount, userRole }: LedgersContent
                 </div>
               )}
 
-              <div className="pt-2 text-xs text-gray-500">
-                Created {formatDate(ledger.created_at)}
+              <div className="pt-2 text-xs text-gray-600">
+                Created by {ledger.profiles?.email ? ledger.profiles.email : 'N/A'} on {formatDate(ledger.created_at)}
               </div>
             </CardContent>
           </Card>

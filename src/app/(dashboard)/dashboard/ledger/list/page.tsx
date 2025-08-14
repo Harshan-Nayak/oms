@@ -23,11 +23,27 @@ export default async function LedgersListPage() {
   }
 
   // Fetch ledgers with pagination
-  const { data: ledgers, count } = await supabase
+  const { data: ledgersData, count } = await supabase
     .from('ledgers')
     .select('*', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(0, 24) // First 25 ledgers
+
+  // Fetch profiles for the ledgers
+  const creatorIds = ledgersData?.map(ledger => ledger.created_by) || []
+  const { data: profilesData } = await supabase
+    .from('profiles')
+    .select('id, email')
+    .in('id', creatorIds)
+
+  // Combine ledgers with profiles
+  const ledgers = ledgersData?.map(ledger => {
+    const profile = profilesData?.find(p => p.id === ledger.created_by)
+    return {
+      ...ledger,
+      profiles: profile ? { email: profile.email } : null
+    }
+  })
 
   return (
     <LedgersContent 

@@ -13,6 +13,13 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogContent,
@@ -26,7 +33,7 @@ import { Database } from '@/types/database'
 import { generateLedgerId } from '@/lib/utils'
 import Image from 'next/image'
 
-type Ledger = Database['public']['Tables']['ledgers']['Insert']
+type Ledger = Database['public']['Tables']['ledgers']['Insert'] & { updated_at?: string }
 
 const ledgerSchema = z.object({
   business_name: z.string().min(1, 'Business name is required'),
@@ -82,6 +89,7 @@ export function LedgerForm({ userId, ledger, isEdit = false }: LedgerFormProps) 
     register,
     handleSubmit,
     formState: { errors },
+    setValue,
   } = useForm<LedgerFormData>({
     resolver: zodResolver(ledgerSchema),
     defaultValues: {
@@ -164,7 +172,6 @@ export function LedgerForm({ userId, ledger, isEdit = false }: LedgerFormProps) 
     try {
       let logoUrl = ledger?.business_logo || null
 
-      // Upload new logo if selected
       if (logoFile) {
         logoUrl = await uploadLogo(logoFile)
         if (!logoUrl) {
@@ -174,43 +181,59 @@ export function LedgerForm({ userId, ledger, isEdit = false }: LedgerFormProps) 
         }
       }
 
-      const ledgerData: Ledger = {
-        ...data,
-        ledger_id: ledger?.ledger_id || generateLedgerId(),
-        business_logo: logoUrl,
-        created_by: userId,
-      }
-
       if (isEdit && ledger) {
+        // UPDATE operation
+        const ledgerUpdateData = {
+          ...data,
+          business_logo: logoUrl,
+          updated_at: new Date().toISOString(),
+        }
+
         const { error: updateError } = await supabase
           .from('ledgers')
-          .update(ledgerData)
+          .update(ledgerUpdateData)
           .eq('ledger_id', ledger.ledger_id)
 
         if (updateError) {
-          setError('Failed to update ledger. Please try again.')
+          console.error('Supabase update error:', updateError)
+          setError(`Failed to update ledger: ${updateError.message}`)
           return
         }
       } else {
+        // INSERT operation
+        const ledgerInsertData: Ledger = {
+          ...data,
+          ledger_id: generateLedgerId(),
+          business_logo: logoUrl,
+          created_by: userId,
+        }
+
         const { error: insertError } = await supabase
           .from('ledgers')
-          .insert([ledgerData])
+          .insert([ledgerInsertData])
 
         if (insertError) {
-          setError('Failed to create ledger. Please try again.')
+          console.error('Supabase insert error:', insertError)
+          setError(`Failed to create ledger: ${insertError.message}`)
           return
         }
       }
 
+      // Redirect and refresh on success
       router.push('/dashboard/ledger/list')
       router.refresh()
+
     } catch (err) {
-      setError('An unexpected error occurred. Please try again.')
       console.error('Error saving ledger:', err)
+      setError('An unexpected error occurred. Please try again.')
     } finally {
       setLoading(false)
     }
   }
+
+  const indianStates = [
+    'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'
+  ]
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -394,11 +417,21 @@ export function LedgerForm({ userId, ledger, isEdit = false }: LedgerFormProps) 
 
             <div className="space-y-2">
               <Label htmlFor="state">State</Label>
-              <Input
-                id="state"
-                {...register('state')}
-                placeholder="Enter state"
-              />
+              <Select
+                onValueChange={(value) => setValue('state', value)}
+                defaultValue={ledger?.state || ''}
+              >
+                <SelectTrigger id="state">
+                  <SelectValue placeholder="Select state" />
+                </SelectTrigger>
+                <SelectContent className='bg-white' >
+                  {indianStates.map((state) => (
+                    <SelectItem key={state} value={state}>
+                      {state}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
@@ -445,3 +478,4 @@ export function LedgerForm({ userId, ledger, isEdit = false }: LedgerFormProps) 
     </form>
   )
 }
+
