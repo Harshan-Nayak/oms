@@ -196,6 +196,7 @@ export function LedgerForm({ userId, ledger, isEdit = false }: LedgerFormProps) 
                   alt="Logo preview"
                   fill
                   className="object-cover rounded-lg"
+                  unoptimized
                 />
                 <Button
                   type="button"

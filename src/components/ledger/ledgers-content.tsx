@@ -146,6 +146,7 @@ export function LedgersContent({ ledgers, totalCount, userRole }: LedgersContent
                         width={48}
                         height={48}
                         className="rounded-lg object-cover"
+                        unoptimized
                       />
                     ) : (
                       <div className="text-blue-600 font-semibold text-lg">
