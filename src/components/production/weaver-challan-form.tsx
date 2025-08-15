@@ -23,8 +23,8 @@ type WeaverChallan = Database['public']['Tables']['weaver_challans']['Insert']
 
 const qualityDetailSchema = z.object({
   quality_name: z.string().min(1, 'Quality name is required'),
-  rate: z.number().min(0, 'Rate must be positive'),
-  grey_mtr: z.number().min(0, 'Grey meter must be positive'),
+  rate: z.number().int('Quantity must be a whole number').min(0, 'Quantity must be non-negative'),
+  grey_mtr: z.number().int('Rate must be a whole number').min(0, 'Rate must be non-negative'),
 })
 
 const weaverChallanSchema = z.object({
@@ -311,11 +311,33 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
             <div key={field.id} className="border p-4 rounded-lg relative">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor={`quality_details.${index}.quality_name`}>Quality Name *</Label>
-                  <Input
-                    {...register(`quality_details.${index}.quality_name`)}
-                    placeholder="Enter quality name"
-                  />
+                  <Label htmlFor={`quality_details.${index}.quality_name`}>Select Quality *</Label>
+                  <Select
+                    onValueChange={(value) => setValue(`quality_details.${index}.quality_name`, value)}
+                    defaultValue={field.quality_name}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a quality" />
+                    </SelectTrigger>
+                    <SelectContent className='bg-white' >
+                      <SelectItem value="Cotton">Cotton</SelectItem>
+                      <SelectItem value="Linen">Linen</SelectItem>
+                      <SelectItem value="Silk">Silk</SelectItem>
+                      <SelectItem value="Wool">Wool</SelectItem>
+                      <SelectItem value="Cashmere">Cashmere</SelectItem>
+                      <SelectItem value="Hemp">Hemp</SelectItem>
+                      <SelectItem value="Polyester">Polyester</SelectItem>
+                      <SelectItem value="Nylon">Nylon</SelectItem>
+                      <SelectItem value="Rayon">Rayon</SelectItem>
+                      <SelectItem value="Lycra">Lycra</SelectItem>
+                      <SelectItem value="Acrylic">Acrylic</SelectItem>
+                      <SelectItem value="Chiffon">Chiffon</SelectItem>
+                      <SelectItem value="Georgette">Georgette</SelectItem>
+                      <SelectItem value="Organza">Organza</SelectItem>
+                      <SelectItem value="Tulle">Tulle</SelectItem>
+                      <SelectItem value="Satin">Satin</SelectItem>
+                    </SelectContent>
+                  </Select>
                   {errors.quality_details?.[index]?.quality_name && (
                     <p className="text-sm text-red-600">
                       {errors.quality_details[index]?.quality_name?.message}
@@ -324,12 +346,13 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor={`quality_details.${index}.rate`}>Rate *</Label>
+                  <Label htmlFor={`quality_details.${index}.rate`}>Quantity(in mtr) *</Label>
                   <Input
                     type="number"
-                    step="0.01"
+                    step="1"
+                    min="0"
                     {...register(`quality_details.${index}.rate`, { valueAsNumber: true })}
-                    placeholder="0.00"
+                    placeholder="0"
                   />
                   {errors.quality_details?.[index]?.rate && (
                     <p className="text-sm text-red-600">
@@ -339,15 +362,16 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor={`quality_details.${index}.grey_mtr`}>Grey Mtr *</Label>
+                  <Label htmlFor={`quality_details.${index}.grey_mtr`}>Rate per mtr *</Label>
                   <Input
                     type="number"
-                    step="0.01"
+                    step="1"
+                    min="0"
                     {...register(`quality_details.${index}.grey_mtr`, { 
                       valueAsNumber: true,
                       onChange: calculateTotalGreyMtr
                     })}
-                    placeholder="0.00"
+                    placeholder="0"
                   />
                   {errors.quality_details?.[index]?.grey_mtr && (
                     <p className="text-sm text-red-600">

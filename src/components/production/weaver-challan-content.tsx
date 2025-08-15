@@ -6,6 +6,9 @@ import { supabase } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Badge } from '@/components/ui/badge'
 import { 
   Table,
@@ -72,6 +75,10 @@ export function WeaverChallanContent({
   const [searchTerm, setSearchTerm] = useState('')
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [partyFilter, setPartyFilter] = useState('')
+  const [startDateFilter, setStartDateFilter] = useState('')
+  const [endDateFilter, setEndDateFilter] = useState('')
+  const [qualityFilter, setQualityFilter] = useState('')
   
   const canEdit = userRole === 'Admin' || userRole === 'Manager'
 
@@ -82,8 +89,28 @@ export function WeaverChallanContent({
       challan.ms_party_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (challan.ledgers?.business_name && challan.ledgers.business_name.toLowerCase().includes(searchTerm.toLowerCase()))
 
-    return matchesSearch
+    const matchesParty = !partyFilter || partyFilter === 'all' || challan.ledger_id === partyFilter
+    
+    const matchesDate = (!startDateFilter || new Date(challan.challan_date) >= new Date(startDateFilter)) &&
+                        (!endDateFilter || new Date(challan.challan_date) <= new Date(endDateFilter))
+
+    const matchesQuality = !qualityFilter || qualityFilter === 'all' ||
+      (challan.quality_details && Array.isArray(challan.quality_details) &&
+       challan.quality_details.some(q =>
+         q && typeof q === 'object' && 'quality_name' in q && typeof q.quality_name === 'string' &&
+         q.quality_name.toLowerCase().includes(qualityFilter.toLowerCase())
+       ))
+
+    return matchesSearch && matchesParty && matchesDate && matchesQuality
   })
+
+  const resetFilters = () => {
+    setSearchTerm('')
+    setPartyFilter('')
+    setStartDateFilter('')
+    setEndDateFilter('')
+    setQualityFilter('')
+  }
 
   const handleDeleteWeaverChallan = async (challanId: number, challanNo: string) => {
     if (!confirm(`Are you sure you want to delete Weaver Challan "${challanNo}"? This action cannot be undone.`)) {
@@ -183,19 +210,19 @@ export function WeaverChallanContent({
         )}
       </div>
 
-      {/* Search */}
+      {/* Search and Filters */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
             <Search className="h-5 w-5 mr-2" />
-            Search Challans
+            Search & Filter Challans
           </CardTitle>
           <CardDescription>
-            Search by batch number, challan number, party name, or business name
+            Use the search bar for quick searches or expand the filters for more options.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="relative max-w-md">
+          <div className="relative max-w-md mb-4">
             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
             <Input
               placeholder="Search challans..."
@@ -204,6 +231,70 @@ export function WeaverChallanContent({
               className="pl-9"
             />
           </div>
+
+          <Accordion type="single" collapsible>
+            <AccordionItem value="filters">
+              <AccordionTrigger>Advanced Filters</AccordionTrigger>
+              <AccordionContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4">
+                  <div className="space-y-2">
+                    <Label>Party Name</Label>
+                    <Select value={partyFilter} onValueChange={setPartyFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Parties" />
+                      </SelectTrigger>
+                      <SelectContent className='bg-white'>
+                        <SelectItem value="all">All Parties</SelectItem>
+                        {ledgers.map(ledger => (
+                          <SelectItem key={ledger.ledger_id} value={ledger.ledger_id}>
+                            {ledger.business_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Start Date</Label>
+                    <Input type="date" value={startDateFilter} onChange={e => setStartDateFilter(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>End Date</Label>
+                    <Input type="date" value={endDateFilter} onChange={e => setEndDateFilter(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Quality Name</Label>
+                    <Select value={qualityFilter} onValueChange={setQualityFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Qualities" />
+                      </SelectTrigger>
+                      <SelectContent className='bg-white'>
+                        <SelectItem value="all">All Qualities</SelectItem>
+                        <SelectItem value="Cotton">Cotton</SelectItem>
+                        <SelectItem value="Linen">Linen</SelectItem>
+                        <SelectItem value="Silk">Silk</SelectItem>
+                        <SelectItem value="Wool">Wool</SelectItem>
+                        <SelectItem value="Cashmere">Cashmere</SelectItem>
+                        <SelectItem value="Hemp">Hemp</SelectItem>
+                        <SelectItem value="Polyester">Polyester</SelectItem>
+                        <SelectItem value="Nylon">Nylon</SelectItem>
+                        <SelectItem value="Rayon">Rayon</SelectItem>
+                        <SelectItem value="Lycra">Lycra</SelectItem>
+                        <SelectItem value="Acrylic">Acrylic</SelectItem>
+                        <SelectItem value="Chiffon">Chiffon</SelectItem>
+                        <SelectItem value="Georgette">Georgette</SelectItem>
+                        <SelectItem value="Organza">Organza</SelectItem>
+                        <SelectItem value="Tulle">Tulle</SelectItem>
+                        <SelectItem value="Satin">Satin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" className="mt-4" onClick={resetFilters}>
+                  Reset Filters
+                </Button>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </CardContent>
       </Card>
 
@@ -212,16 +303,16 @@ export function WeaverChallanContent({
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-blue-600">
-              {totalCount}
+              {filteredChallans.length}
             </div>
-            <div className="text-sm text-gray-600">Total Challans</div>
+            <div className="text-sm text-gray-600">Filtered Challans</div>
           </CardContent>
         </Card>
         
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-green-600">
-              {challans.reduce((sum, challan) => sum + challan.total_grey_mtr, 0).toFixed(2)}
+              {filteredChallans.reduce((sum, challan) => sum + challan.total_grey_mtr, 0).toFixed(2)}
             </div>
             <div className="text-sm text-gray-600">Total Grey Mtr</div>
           </CardContent>
@@ -230,7 +321,7 @@ export function WeaverChallanContent({
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-purple-600">
-              {challans.reduce((sum, challan) => sum + challan.taka, 0)}
+              {filteredChallans.reduce((sum, challan) => sum + challan.taka, 0)}
             </div>
             <div className="text-sm text-gray-600">Total Taka</div>
           </CardContent>
@@ -239,7 +330,7 @@ export function WeaverChallanContent({
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-orange-600">
-              {challans.filter(c => c.transport_name).length}
+              {filteredChallans.filter(c => c.transport_name).length}
             </div>
             <div className="text-sm text-gray-600">With Transport</div>
           </CardContent>
