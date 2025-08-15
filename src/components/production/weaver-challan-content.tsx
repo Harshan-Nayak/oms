@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import toast from 'react-hot-toast'
 import { supabase } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -126,15 +127,16 @@ export function WeaverChallanContent({
         .eq('id', challanId)
 
       if (error) {
-        alert('Failed to delete weaver challan. Please try again.')
+        toast.error('Failed to delete weaver challan. Please try again.')
         return
       }
 
+      toast.success(`Challan "${challanNo}" has been deleted successfully.`)
       // Refresh the page to show updated data
       router.refresh()
     } catch (err) {
       console.error('Error deleting weaver challan:', err)
-      alert('An unexpected error occurred. Please try again.')
+      toast.error('An unexpected error occurred. Please try again.')
     } finally {
       setDeletingId(null)
     }

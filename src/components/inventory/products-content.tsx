@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import toast from 'react-hot-toast'
 import { supabase } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -105,15 +106,16 @@ export function ProductsContent({ products, totalCount, filterOptions, userRole 
         .eq('id', productId)
 
       if (error) {
-        alert('Failed to delete product. Please try again.')
+        toast.error('Failed to delete product. Please try again.')
         return
       }
 
+      toast.success(`"${productName}" has been deleted successfully.`)
       // Refresh the page to show updated data
       router.refresh()
     } catch (err) {
       console.error('Error deleting product:', err)
-      alert('An unexpected error occurred. Please try again.')
+      toast.error('An unexpected error occurred. Please try again.')
     } finally {
       setDeletingId(null)
     }
