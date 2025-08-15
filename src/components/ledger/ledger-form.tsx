@@ -53,7 +53,9 @@ const ledgerSchema = z.object({
   district: z.string().optional(),
   state: z.string().optional(),
   country: z.string(),
-  zip_code: z.string().optional(),
+  zip_code: z.string().optional().refine((value) => !value || /^\d{6}$/.test(value), {
+    message: 'ZIP code must be 6 digits',
+  }),
   gst_number: z.string()
     .optional()
     .refine(
@@ -447,6 +449,9 @@ export function LedgerForm({ userId, ledger, isEdit = false }: LedgerFormProps) 
                 {...register('zip_code')}
                 placeholder="Enter ZIP code"
               />
+              {errors.zip_code && (
+                <p className="text-sm text-red-600">{errors.zip_code.message}</p>
+              )}
             </div>
           </div>
 
@@ -484,4 +489,3 @@ export function LedgerForm({ userId, ledger, isEdit = false }: LedgerFormProps) 
     </form>
   )
 }
-

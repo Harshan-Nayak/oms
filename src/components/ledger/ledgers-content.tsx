@@ -88,6 +88,7 @@ export function LedgersContent({ ledgers, totalCount, userRole }: LedgersContent
   const [states, setStates] = useState<string[]>([])
   const [cities, setCities] = useState<string[]>([])
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null)
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
 
   const canEdit = userRole === 'Admin' || userRole === 'Manager'
 
@@ -333,7 +334,7 @@ export function LedgersContent({ ledgers, totalCount, userRole }: LedgersContent
                   </div>
                 </div>
                 
-                <DropdownMenu>
+                <DropdownMenu open={openDropdown === ledger.ledger_id} onOpenChange={(isOpen) => setOpenDropdown(isOpen ? ledger.ledger_id : null)}>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-8 w-8 p-0">
                       <MoreHorizontal className="h-4 w-4" />
@@ -371,7 +372,10 @@ export function LedgersContent({ ledgers, totalCount, userRole }: LedgersContent
                       </DropdownMenuItem>
                     )}
                     {canEdit && (
-                      <DropdownMenuItem onClick={() => handleShowLogs(ledger)}>
+                      <DropdownMenuItem onClick={() => {
+                        handleShowLogs(ledger)
+                        setOpenDropdown(null)
+                      }}>
                         <History className="mr-2 h-4 w-4" />
                         Change Logs
                       </DropdownMenuItem>
@@ -457,7 +461,13 @@ export function LedgersContent({ ledgers, totalCount, userRole }: LedgersContent
       )}
 
       {/* Change Log Modal */}
-      <Dialog open={isLogModalOpen} onOpenChange={setIsLogModalOpen}>
+      <Dialog open={isLogModalOpen} onOpenChange={(isOpen) => {
+        setIsLogModalOpen(isOpen)
+        if (!isOpen) {
+          setSelectedLedger(null)
+          setSelectedLedgerLogs([])
+        }
+      }}>
         <DialogContent className="max-w-3xl bg-white">
           <DialogHeader>
             <DialogTitle>Change Log for {selectedLedger?.business_name}</DialogTitle>
