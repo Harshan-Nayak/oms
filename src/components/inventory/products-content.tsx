@@ -288,7 +288,7 @@ export function ProductsContent({ products, totalCount, filterOptions, userRole 
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      <DropdownMenuContent align="end" className='bg-white' >
                         <DropdownMenuItem
                           onClick={() => router.push(`/dashboard/inventory/products/${product.id}`)}
                         >

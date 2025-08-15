@@ -68,7 +68,7 @@ CREATE TABLE public.weaver_challans (
   batch_number TEXT UNIQUE NOT NULL,
   challan_no TEXT UNIQUE NOT NULL,
   ms_party_name TEXT NOT NULL,
-  ledger_id TEXT REFERENCES ledgers(ledger_id),
+  ledger_id TEXT REFERENCES ledgers(ledger_id) ON DELETE SET NULL,
   delivery_at TEXT,
   bill_no TEXT,
   total_grey_mtr DECIMAL(10,2) NOT NULL,
@@ -90,7 +90,7 @@ CREATE TABLE public.purchase_orders (
   po_number TEXT UNIQUE NOT NULL,
   po_date DATE NOT NULL,
   supplier_name TEXT NOT NULL,
-  ledger_id TEXT REFERENCES ledgers(ledger_id),
+  ledger_id TEXT REFERENCES ledgers(ledger_id) ON DELETE SET NULL,
   total_amount DECIMAL(15,2) NOT NULL DEFAULT 0,
   status TEXT CHECK (status IN ('Draft', 'Sent', 'Confirmed', 'Partial', 'Completed', 'Cancelled')) DEFAULT 'Draft',
   description TEXT,
@@ -150,6 +150,16 @@ CREATE POLICY "Admin and Manager can update products" ON public.products
     )
   );
 
+CREATE POLICY "Admin and Manager can delete products" ON public.products
+  FOR DELETE TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid()
+      AND user_role IN ('Admin', 'Manager')
+    )
+  );
+
 -- Ledgers policies
 CREATE POLICY "All authenticated users can view ledgers" ON public.ledgers
   FOR SELECT TO authenticated USING (true);
@@ -166,6 +176,16 @@ CREATE POLICY "Admin and Manager can insert ledgers" ON public.ledgers
 
 CREATE POLICY "Admin and Manager can update ledgers" ON public.ledgers
   FOR UPDATE TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid()
+      AND user_role IN ('Admin', 'Manager')
+    )
+  );
+
+CREATE POLICY "Admin and Manager can delete ledgers" ON public.ledgers
+  FOR DELETE TO authenticated
   USING (
     EXISTS (
       SELECT 1 FROM public.profiles
@@ -219,6 +239,16 @@ CREATE POLICY "Admin and Manager can update purchase orders" ON public.purchase_
     )
   );
 
+CREATE POLICY "Admin and Manager can delete purchase orders" ON public.purchase_orders
+  FOR DELETE TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid()
+      AND user_role IN ('Admin', 'Manager')
+    )
+  );
+
 -- Weaver Challans policies
 CREATE POLICY "All authenticated users can view weaver challans" ON public.weaver_challans
   FOR SELECT TO authenticated USING (true);
@@ -239,6 +269,16 @@ CREATE POLICY "Admin and Manager can update weaver challans" ON public.weaver_ch
     EXISTS (
       SELECT 1 FROM public.profiles 
       WHERE id = auth.uid() 
+      AND user_role IN ('Admin', 'Manager')
+    )
+  );
+
+CREATE POLICY "Admin and Manager can delete weaver challans" ON public.weaver_challans
+  FOR DELETE TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid()
       AND user_role IN ('Admin', 'Manager')
     )
   );
