@@ -67,7 +67,7 @@ export default async function LedgersListPage({ searchParams }: PageProps) {
     query = query.gte('created_at', fromDate)
   }
   if (toDate) {
-    query = query.lte('created_at', toDate)
+    query = query.lte('created_at', `${toDate}T23:59:59.999Z`)
   }
 
   const { data: ledgersData, count } = await query

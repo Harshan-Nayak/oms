@@ -93,7 +93,7 @@ export function WeaverChallanContent({
     const matchesParty = !partyFilter || partyFilter === 'all' || challan.ledger_id === partyFilter
     
     const matchesDate = (!startDateFilter || new Date(challan.challan_date) >= new Date(startDateFilter)) &&
-                        (!endDateFilter || new Date(challan.challan_date) <= new Date(endDateFilter))
+                        (!endDateFilter || new Date(challan.challan_date) < new Date(new Date(endDateFilter).setDate(new Date(endDateFilter).getDate() + 1)))
 
     const matchesQuality = !qualityFilter || qualityFilter === 'all' ||
       (challan.quality_details && Array.isArray(challan.quality_details) &&
