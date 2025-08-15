@@ -37,11 +37,11 @@ import {
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import {
-  Plus,
-  Search,
-  MoreHorizontal,
-  Edit,
-  Trash2,
+  Plus, 
+  Search, 
+  MoreHorizontal, 
+  Edit, 
+  Trash2, 
   Eye,
   Phone,
   Mail,
@@ -49,6 +49,7 @@ import {
   History,
   Filter,
   X,
+  Loader2,
 } from 'lucide-react'
 import { Database } from '@/types/database'
 import { formatDate } from '@/lib/utils'
@@ -85,6 +86,7 @@ export function LedgersContent({ ledgers, totalCount, userRole }: LedgersContent
   const [selectedLedger, setSelectedLedger] = useState<Ledger | null>(null)
   const [states, setStates] = useState<string[]>([])
   const [cities, setCities] = useState<string[]>([])
+  const [navigatingTo, setNavigatingTo] = useState<string | null>(null)
 
   const canEdit = userRole === 'Admin' || userRole === 'Manager'
 
@@ -337,16 +339,32 @@ export function LedgersContent({ ledgers, totalCount, userRole }: LedgersContent
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className='bg-white' >
                     <DropdownMenuItem
-                      onClick={() => router.push(`/dashboard/ledger/${ledger.ledger_id}`)}
+                      onClick={() => {
+                        setNavigatingTo(ledger.ledger_id)
+                        router.push(`/dashboard/ledger/${ledger.ledger_id}`)
+                      }}
+                      disabled={navigatingTo === ledger.ledger_id}
                     >
-                      <Eye className="mr-2 h-4 w-4" />
+                      {navigatingTo === ledger.ledger_id ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Eye className="mr-2 h-4 w-4" />
+                      )}
                       View Details
                     </DropdownMenuItem>
                     {canEdit && (
                       <DropdownMenuItem
-                        onClick={() => router.push(`/dashboard/ledger/${ledger.ledger_id}/edit`)}
+                        onClick={() => {
+                          setNavigatingTo(ledger.ledger_id)
+                          router.push(`/dashboard/ledger/${ledger.ledger_id}/edit`)
+                        }}
+                        disabled={navigatingTo === ledger.ledger_id}
                       >
-                        <Edit className="mr-2 h-4 w-4" />
+                        {navigatingTo === ledger.ledger_id ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Edit className="mr-2 h-4 w-4" />
+                        )}
                         Edit
                       </DropdownMenuItem>
                     )}
