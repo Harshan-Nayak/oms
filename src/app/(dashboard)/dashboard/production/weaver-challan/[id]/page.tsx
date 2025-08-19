@@ -14,6 +14,14 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { formatDate } from '@/lib/utils'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { Tables, Json } from '@/types/supabase'
 
 type WeaverChallan = Tables<'weaver_challans'> & {
@@ -84,6 +92,17 @@ export default async function WeaverChallanDetailPage({ params }: WeaverChallanD
   }
 
   const qualityDetails = parseQualityDetails(weaverChallan.quality_details)
+
+  const parseTakaDetails = (takaDetails: Json | null) => {
+    if (!takaDetails) return []
+    try {
+      return typeof takaDetails === 'string' ? JSON.parse(takaDetails) : takaDetails
+    } catch {
+      return []
+    }
+  }
+
+  const takaDetails = parseTakaDetails(weaverChallan.taka_details)
 
   return (
     <div className="space-y-6">
@@ -276,6 +295,31 @@ export default async function WeaverChallanDetailPage({ params }: WeaverChallanD
             </CardContent>
           </Card>
 
+         {/* Metadata */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Record Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Created At</label>
+                  <p className="text-gray-900">{formatDate(weaverChallan.created_at)}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Last Updated</label>
+                  <p className="text-gray-900">{formatDate(weaverChallan.updated_at)}</p>
+                </div>
+              </div>
+              {weaverChallan.edit_logs && (
+                <div className="mt-4">
+                  <label className="text-sm font-medium text-gray-700">Edit History</label>
+                  <p className="text-sm text-gray-600 mt-1">{weaverChallan.edit_logs}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Transport Details */}
           {(weaverChallan.transport_name || weaverChallan.lr_number || weaverChallan.transport_charge) && (
             <Card>
@@ -311,30 +355,39 @@ export default async function WeaverChallanDetailPage({ params }: WeaverChallanD
             </Card>
           )}
 
-          {/* Metadata */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Record Information</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Created At</label>
-                  <p className="text-gray-900">{formatDate(weaverChallan.created_at)}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Last Updated</label>
-                  <p className="text-gray-900">{formatDate(weaverChallan.updated_at)}</p>
-                </div>
-              </div>
-              {weaverChallan.edit_logs && (
-                <div className="mt-4">
-                  <label className="text-sm font-medium text-gray-700">Edit History</label>
-                  <p className="text-sm text-gray-600 mt-1">{weaverChallan.edit_logs}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+         
+
+  {/* Taka Details */}
+          {takaDetails.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Taka Details</CardTitle>
+                <CardDescription>Breakdown of each taka</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>S.No</TableHead>
+                      <TableHead>Taka Number</TableHead>
+                      <TableHead>Meters</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {takaDetails.map((taka: { taka_number: string; meters: number }, index: number) => (
+                      <TableRow key={index}>
+                        <TableCell>{index + 1}</TableCell>
+                        <TableCell>{taka.taka_number}</TableCell>
+                        <TableCell>{taka.meters}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
+
+
         </div>
       </div>
     </div>

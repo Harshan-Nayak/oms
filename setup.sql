@@ -69,8 +69,6 @@ CREATE TABLE public.weaver_challans (
   challan_no TEXT UNIQUE NOT NULL,
   ms_party_name TEXT NOT NULL,
   ledger_id TEXT REFERENCES ledgers(ledger_id) ON DELETE SET NULL,
-  delivery_at TEXT,
-  bill_no TEXT,
   total_grey_mtr DECIMAL(10,2) NOT NULL,
   fold_cm DECIMAL(8,2),
   width_inch DECIMAL(8,2),
@@ -79,6 +77,7 @@ CREATE TABLE public.weaver_challans (
   lr_number TEXT,
   transport_charge DECIMAL(10,2),
   quality_details JSONB,
+  taka_details JSONB,
   created_by UUID REFERENCES auth.users(id),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

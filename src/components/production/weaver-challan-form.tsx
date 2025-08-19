@@ -27,11 +27,14 @@ const qualityDetailSchema = z.object({
   grey_mtr: z.number().int('Rate must be a whole number').min(0, 'Rate must be non-negative'),
 })
 
+const takaDetailSchema = z.object({
+  taka_number: z.string().min(1, 'Taka number is required'),
+  meters: z.number().min(0.01, 'Meters must be greater than 0'),
+});
+
 const weaverChallanSchema = z.object({
   challan_date: z.string().min(1, 'Challan date is required'),
   ledger_id: z.string().min(1, 'Ledger selection is required'),
-  delivery_at: z.string().optional(),
-  bill_no: z.string().optional(),
   total_grey_mtr: z.number().min(0.01, 'Total grey meter must be greater than 0'),
   fold_cm: z.number().min(0).optional(),
   width_inch: z.number().min(0).optional(),
@@ -40,6 +43,7 @@ const weaverChallanSchema = z.object({
   lr_number: z.string().optional(),
   transport_charge: z.number().min(0).optional(),
   quality_details: z.array(qualityDetailSchema).min(1, 'At least one quality detail is required'),
+  taka_details: z.array(takaDetailSchema).optional(),
 })
 
 type WeaverChallanFormData = z.infer<typeof weaverChallanSchema>
@@ -77,8 +81,6 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
     defaultValues: {
       challan_date: '', // Set by useEffect
       ledger_id: '',
-      delivery_at: '',
-      bill_no: '',
       total_grey_mtr: 0,
       fold_cm: 0,
       width_inch: 0,
@@ -87,6 +89,7 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
       lr_number: '',
       transport_charge: 0,
       quality_details: [{ quality_name: '', rate: 0, grey_mtr: 0 }],
+      taka_details: [],
     },
   })
 
@@ -108,7 +111,13 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
     name: 'quality_details',
   })
 
+  const { fields: takaFields, append: appendTaka, remove: removeTaka } = useFieldArray({
+    control,
+    name: 'taka_details',
+  });
+
   const qualityDetails = watch('quality_details')
+  const takaValue = watch('taka');
 
   // Auto-calculate total grey meter from quality details
   const calculateTotalGreyMtr = () => {
@@ -120,9 +129,6 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
     const ledger = ledgers.find(l => l.ledger_id === ledgerId)
     setSelectedLedger(ledger || null)
     setValue('ledger_id', ledgerId)
-    if (ledger) {
-      setValue('delivery_at', `${ledger.city || ''}, ${ledger.state || ''}`.trim().replace(/^,\s*|,\s*$/g, ''))
-    }
   }
 
   const generateNumbers = async () => {
@@ -187,12 +193,12 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
         challan_no: challanNumber,
         ms_party_name: selectedLedger?.business_name || '',
         ledger_id: data.ledger_id,
-        delivery_at: data.delivery_at || null,
-        bill_no: data.bill_no || null,
         total_grey_mtr: data.total_grey_mtr,
         fold_cm: data.fold_cm || null,
         width_inch: data.width_inch || null,
         taka: data.taka,
+        // @ts-expect-error - Zod schema and DB schema have slightly different optionality for this field
+        taka_details: data.taka_details,
         transport_name: data.transport_name || null,
         lr_number: data.lr_number || null,
         transport_charge: data.transport_charge || null,
@@ -398,14 +404,14 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
             </div>
           ))}
 
-          <Button
+          {/* <Button
             type="button"
             variant="outline"
             onClick={() => append({ quality_name: '', rate: 0, grey_mtr: 0 })}
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Quality
-          </Button>
+          </Button> */}
 
           {errors.quality_details && (
             <p className="text-sm text-red-600">{errors.quality_details.message}</p>
@@ -420,23 +426,7 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
           <CardDescription>Enter production specifications and measurements</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="total_grey_mtr">Total Grey Mtr *</Label>
-              <Input
-                id="total_grey_mtr"
-                type="number"
-                step="0.01"
-                {...register('total_grey_mtr', { valueAsNumber: true })}
-                placeholder="0.00"
-                readOnly
-                className="bg-gray-50"
-              />
-              {errors.total_grey_mtr && (
-                <p className="text-sm text-red-600">{errors.total_grey_mtr.message}</p>
-              )}
-            </div>
-
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="taka">Taka *</Label>
               <Input
@@ -472,26 +462,55 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
               />
             </div>
           </div>
+        </CardContent>
+      </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="delivery_at">Delivery At</Label>
-              <Input
-                id="delivery_at"
-                {...register('delivery_at')}
-                placeholder="Delivery location"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="bill_no">Bill Number</Label>
-              <Input
-                id="bill_no"
-                {...register('bill_no')}
-                placeholder="Enter bill number"
-              />
-            </div>
+      {/* Taka Details */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Taka Details</CardTitle>
+          <CardDescription>Enter details for each taka.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            {takaFields.map((field, index) => (
+              <div key={field.id} className="flex items-center space-x-2">
+                <span className="font-medium">{index + 1}.</span>
+                <Input
+                  {...register(`taka_details.${index}.taka_number`)}
+                  placeholder="Taka Number"
+                  className="w-1/2"
+                />
+                <Input
+                  type="number"
+                  step="0.01"
+                  {...register(`taka_details.${index}.meters`, { valueAsNumber: true })}
+                  placeholder="Meters in this taka"
+                  className="w-1/2"
+                />
+                <Button type="button" variant="destructive" size="icon" onClick={() => removeTaka(index)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
           </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => appendTaka({ taka_number: '', meters: 0 })}
+            disabled={!takaValue || takaFields.length >= takaValue}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Entry
+          </Button>
+          {errors.taka_details && (
+            <p className="text-sm text-red-600">{errors.taka_details.message}</p>
+          )}
+          {takaValue > 0 && takaFields.length >= takaValue && (
+            <p className="text-sm text-yellow-600 mt-2">
+              You have reached the maximum number of entries based on the Taka value.
+            </p>
+          )}
         </CardContent>
       </Card>
 

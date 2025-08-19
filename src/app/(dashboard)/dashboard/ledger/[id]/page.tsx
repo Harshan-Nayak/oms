@@ -8,6 +8,13 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { formatDate } from '@/lib/utils'
 import Passbook from '@/components/ledger/passbook'
+import ChallanList from '@/components/ledger/challan-list'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion'
 
 interface LedgerDetailPageProps {
   params: Promise<{ id: string }>
@@ -236,7 +243,20 @@ export default async function LedgerDetailPage({ params }: LedgerDetailPageProps
           </Card>
         </div>
       </div>
-      <Passbook ledgerId={ledger.ledger_id} />
+      <Accordion type="multiple" className="w-full">
+        <AccordionItem value="passbook">
+          <AccordionTrigger>Passbook</AccordionTrigger>
+          <AccordionContent>
+            <Passbook ledgerId={ledger.ledger_id} />
+          </AccordionContent>
+        </AccordionItem>
+        <AccordionItem value="challans">
+          <AccordionTrigger>Challan Details</AccordionTrigger>
+          <AccordionContent>
+            <ChallanList ledgerId={ledger.ledger_id} />
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </div>
   )
 }
