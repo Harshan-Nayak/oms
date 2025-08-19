@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Database } from '@/types/database'
+import Image from 'next/image'
 
 type Ledger = Database['public']['Tables']['ledgers']['Row']
 
@@ -83,12 +84,30 @@ export function LedgerSelectModal({ ledgers, onLedgerSelect, children }: LedgerS
               {filteredLedgers.map(ledger => (
                 <div
                   key={ledger.ledger_id}
-                  className="p-2 border rounded-md cursor-pointer hover:bg-gray-100"
+                  className="p-2 border rounded-md cursor-pointer hover:bg-gray-100 flex items-center space-x-4"
                   onClick={() => handleSelect(ledger.ledger_id)}
                 >
-                  <div className="font-medium">{ledger.business_name}</div>
-                  <div className="text-sm text-gray-500">
-                    {ledger.ledger_id} | {ledger.city}, {ledger.state}
+                  <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                    {ledger.business_logo ? (
+                      <Image
+                        src={ledger.business_logo}
+                        alt={ledger.business_name}
+                        width={48}
+                        height={48}
+                        className="rounded-lg object-cover"
+                        unoptimized
+                      />
+                    ) : (
+                      <div className="text-gray-500 font-semibold text-lg">
+                        {ledger.business_name.charAt(0)}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <div className="font-medium">{ledger.business_name}</div>
+                    <div className="text-sm text-gray-500">
+                      {ledger.ledger_id} | {ledger.city}, {ledger.state}
+                    </div>
                   </div>
                 </div>
               ))}

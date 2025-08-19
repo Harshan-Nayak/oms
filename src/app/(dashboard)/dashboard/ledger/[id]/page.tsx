@@ -7,6 +7,7 @@ import { ArrowLeft, Edit, Building2, Phone, Mail, MapPin, FileText } from 'lucid
 import Link from 'next/link'
 import Image from 'next/image'
 import { formatDate } from '@/lib/utils'
+import Passbook from '@/components/ledger/passbook'
 
 interface LedgerDetailPageProps {
   params: Promise<{ id: string }>
@@ -235,6 +236,7 @@ export default async function LedgerDetailPage({ params }: LedgerDetailPageProps
           </Card>
         </div>
       </div>
+      <Passbook ledgerId={ledger.ledger_id} />
     </div>
   )
 }
