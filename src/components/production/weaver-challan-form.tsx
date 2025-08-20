@@ -23,8 +23,8 @@ type WeaverChallan = Database['public']['Tables']['weaver_challans']['Insert']
 
 const qualityDetailSchema = z.object({
   quality_name: z.string().min(1, 'Quality name is required'),
-  rate: z.number().int('Quantity must be a whole number').min(0, 'Quantity must be non-negative'),
-  grey_mtr: z.number().int('Rate must be a whole number').min(0, 'Rate must be non-negative'),
+  rate: z.number().min(0, 'Quantity must be non-negative'),
+  grey_mtr: z.number().min(0, 'Rate must be non-negative'),
 })
 
 const takaDetailSchema = z.object({
@@ -58,9 +58,9 @@ interface WeaverChallanFormProps {
 // Hardcoded Bhaktinandan Details
 const bhaktinandanDetails = {
   name: 'BHAKTINANDAN',
-  address: '123 High Street, Nikol, Ahmedabad, Gujarat - 302545',
+  address: 'A 606,SARTHAK FLORA,AMARJAVAN CIRLCE, AHEMDABAD, GUJARAT - 24',
   mobile: '+91 96623 50960',
-  gst: '23ABCD8965WE12QW',
+  gst: '24CFIPB8013H1ZT',
 }
 
 export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: WeaverChallanFormProps) {
@@ -197,7 +197,6 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
         fold_cm: data.fold_cm || null,
         width_inch: data.width_inch || null,
         taka: data.taka,
-        // @ts-expect-error - Zod schema and DB schema have slightly different optionality for this field
         taka_details: data.taka_details,
         transport_name: data.transport_name || null,
         lr_number: data.lr_number || null,
@@ -371,7 +370,7 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
                   <Label htmlFor={`quality_details.${index}.grey_mtr`}>Rate per mtr *</Label>
                   <Input
                     type="number"
-                    step="1"
+                    step="0.01"
                     min="0"
                     {...register(`quality_details.${index}.grey_mtr`, { 
                       valueAsNumber: true,

@@ -10,10 +10,12 @@ type WeaverChallan = Tables<'weaver_challans'> & {
 
 type QualityDetail = {
   quality_name: string;
+  rate: number;
 };
 
 function isQualityDetail(obj: unknown): obj is QualityDetail {
-  return !!obj && typeof (obj as QualityDetail).quality_name === 'string';
+  const detail = obj as QualityDetail;
+  return !!detail && typeof detail.quality_name === 'string' && typeof detail.rate === 'number';
 }
 
 export default function PrintChallanClient({ weaverChallan }: { weaverChallan: WeaverChallan }) {
@@ -27,9 +29,12 @@ export default function PrintChallanClient({ weaverChallan }: { weaverChallan: W
   }
 
   const takaDetails = parseTakaDetails(weaverChallan.taka_details)
-  const qualityName = Array.isArray(weaverChallan.quality_details) && weaverChallan.quality_details.length > 0 && isQualityDetail(weaverChallan.quality_details[0])
-    ? weaverChallan.quality_details[0].quality_name
-    : 'N/A';
+  const qualityDetail = Array.isArray(weaverChallan.quality_details) && weaverChallan.quality_details.length > 0 && isQualityDetail(weaverChallan.quality_details[0])
+    ? weaverChallan.quality_details[0]
+    : null;
+
+  const qualityName = qualityDetail ? qualityDetail.quality_name : 'N/A';
+  const rate = qualityDetail ? qualityDetail.rate : 'N/A';
 
   return (
     <div className="min-h-screen bg-gray-100 print:bg-white">
@@ -50,12 +55,12 @@ export default function PrintChallanClient({ weaverChallan }: { weaverChallan: W
       `}</style>
 
       <div className="no-print p-4 bg-white shadow-md flex justify-between items-center">
-        <button
+        {/* <button
           onClick={() => window.history.back()}
           className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-800"
         >
           ← Back
-        </button>
+        </button> */}
         <button
           onClick={() => window.print()}
           className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -136,7 +141,7 @@ CIRLCE,
           <div className="grid grid-cols-2 gap-4">
             <div className="text-sm">
               <p className="font-semibold text-gray-800">Total Grey:</p>
-              <p className="font-bold text-xl text-gray-900">{weaverChallan.total_grey_mtr} <span className="text-sm font-normal">Meters</span></p>
+              <p className="font-bold text-xl text-gray-900">{rate} <span className="text-sm font-normal">Mtr</span></p>
             </div>
             <div className="text-sm text-right">
               <p className="font-semibold text-gray-800">Total Taka:</p>

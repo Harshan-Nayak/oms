@@ -349,6 +349,116 @@ CREATE TRIGGER on_ledger_update
   AFTER UPDATE ON public.ledgers
   FOR EACH ROW EXECUTE FUNCTION public.log_ledger_changes();
 
+-- Create expenses table
+CREATE TABLE public.expenses (
+  id SERIAL PRIMARY KEY,
+  expense_date DATE NOT NULL,
+  ledger_id TEXT REFERENCES ledgers(ledger_id) ON DELETE SET NULL,
+  challan_no TEXT REFERENCES weaver_challans(challan_no) ON DELETE SET NULL,
+  expense_for TEXT[] NOT NULL,
+  other_expense_description TEXT,
+  cost DECIMAL(10,2) NOT NULL,
+  created_by UUID REFERENCES auth.users(id),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create expense_logs table
+CREATE TABLE public.expense_logs (
+  id SERIAL PRIMARY KEY,
+  expense_id INTEGER REFERENCES public.expenses(id) ON DELETE CASCADE,
+  changed_by UUID REFERENCES auth.users(id),
+  changes JSONB,
+  changed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Enable RLS on new tables
+ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.expense_logs ENABLE ROW LEVEL SECURITY;
+
+-- Expenses policies
+CREATE POLICY "All authenticated users can view expenses" ON public.expenses
+  FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Admin and Manager can insert expenses" ON public.expenses
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid()
+      AND user_role IN ('Admin', 'Manager')
+    )
+  );
+
+CREATE POLICY "Admin and Manager can update expenses" ON public.expenses
+  FOR UPDATE TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid()
+      AND user_role IN ('Admin', 'Manager')
+    )
+  );
+
+CREATE POLICY "Admin and Manager can delete expenses" ON public.expenses
+  FOR DELETE TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid()
+      AND user_role IN ('Admin', 'Manager')
+    )
+  );
+
+-- Expense Logs policies
+CREATE POLICY "Admin and Manager can view expense logs" ON public.expense_logs
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid()
+      AND user_role IN ('Admin', 'Manager')
+    )
+  );
+
+CREATE POLICY "Admin and Manager can insert expense logs" ON public.expense_logs
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid()
+      AND user_role IN ('Admin', 'Manager')
+    )
+  );
+
+-- Function to log expense changes
+CREATE OR REPLACE FUNCTION public.log_expense_changes()
+RETURNS TRIGGER AS $$
+DECLARE
+  changes jsonb := '{}'::jsonb;
+  r record;
+BEGIN
+  FOR r IN SELECT * FROM jsonb_each(to_jsonb(NEW))
+  LOOP
+    IF r.key <> 'updated_at' AND r.value <> (to_jsonb(OLD) -> r.key) THEN
+      changes := changes || jsonb_build_object(r.key, jsonb_build_object('old', (to_jsonb(OLD) -> r.key), 'new', r.value));
+    END IF;
+  END LOOP;
+
+  IF changes <> '{}'::jsonb THEN
+    INSERT INTO public.expense_logs (expense_id, changed_by, changes)
+    VALUES (NEW.id, auth.uid(), changes);
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY INVOKER;
+
+-- Trigger to log expense changes
+CREATE TRIGGER on_expense_update
+  AFTER UPDATE ON public.expenses
+  FOR EACH ROW EXECUTE FUNCTION public.log_expense_changes();
+
 -- Set up first admin user (UPDATE - replace email with your actual email)
 -- Note: This should be run AFTER you've signed up with your email in the app
 -- UPDATE public.profiles

@@ -6,9 +6,109 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export interface Database {
+export type Database = {
   public: {
     Tables: {
+      expenses: {
+        Row: {
+          cost: number
+          created_at: string
+          created_by: string | null
+          expense_date: string
+          expense_for: string[]
+          id: number
+          ledger_id: string | null
+          challan_no: string | null
+          other_expense_description: string | null
+          updated_at: string
+        }
+        Insert: {
+          cost: number
+          created_at?: string
+          created_by?: string | null
+          expense_date: string
+          expense_for: string[]
+          id?: number
+          ledger_id?: string | null
+          challan_no?: string | null
+          other_expense_description?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cost?: number
+          created_at?: string
+          created_by?: string | null
+          expense_date?: string
+          expense_for?: string[]
+          id?: number
+          ledger_id?: string | null
+          challan_no?: string | null
+          other_expense_description?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_ledger_id_fkey"
+            columns: ["ledger_id"]
+            isOneToOne: false
+            referencedRelation: "ledgers"
+            referencedColumns: ["ledger_id"]
+          },
+          {
+            foreignKeyName: "expenses_challan_no_fkey"
+            columns: ["challan_no"]
+            isOneToOne: false
+            referencedRelation: "weaver_challans"
+            referencedColumns: ["challan_no"]
+          },
+        ]
+      }
+      expense_logs: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          changes: Json | null
+          expense_id: number | null
+          id: number
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          changes?: Json | null
+          expense_id?: number | null
+          id?: number
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          changes?: Json | null
+          expense_id?: number | null
+          id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_logs_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_logs_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ledgers: {
         Row: {
           address: string | null
@@ -68,9 +168,10 @@ export interface Database {
           {
             foreignKeyName: "ledgers_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
       ledger_logs: {
@@ -99,15 +200,17 @@ export interface Database {
           {
             foreignKeyName: "ledger_logs_changed_by_fkey"
             columns: ["changed_by"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "ledger_logs_ledger_id_fkey"
             columns: ["ledger_id"]
+            isOneToOne: false
             referencedRelation: "ledgers"
             referencedColumns: ["ledger_id"]
-          }
+          },
         ]
       }
       products: {
@@ -175,9 +278,10 @@ export interface Database {
           {
             foreignKeyName: "products_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
       profiles: {
@@ -242,9 +346,10 @@ export interface Database {
           {
             foreignKeyName: "profiles_id_fkey"
             columns: ["id"]
+            isOneToOne: true
             referencedRelation: "users"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
       purchase_orders: {
@@ -277,7 +382,7 @@ export interface Database {
           status?: string | null
           supplier_name: string
           terms_conditions?: string | null
-          total_amount: number
+          total_amount?: number
           updated_at?: string
         }
         Update: {
@@ -300,26 +405,26 @@ export interface Database {
           {
             foreignKeyName: "purchase_orders_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "purchase_orders_ledger_id_fkey"
             columns: ["ledger_id"]
+            isOneToOne: false
             referencedRelation: "ledgers"
             referencedColumns: ["ledger_id"]
-          }
+          },
         ]
       }
       weaver_challans: {
         Row: {
           batch_number: string
-          bill_no: string | null
           challan_date: string
           challan_no: string
           created_at: string
           created_by: string | null
-          delivery_at: string | null
           fold_cm: number | null
           id: number
           ledger_id: string | null
@@ -327,21 +432,19 @@ export interface Database {
           ms_party_name: string
           quality_details: Json | null
           taka: number
+          taka_details: Json | null
           total_grey_mtr: number
           transport_charge: number | null
           transport_name: string | null
           updated_at: string
           width_inch: number | null
-          edit_logs: string | null
         }
         Insert: {
           batch_number: string
-          bill_no?: string | null
           challan_date: string
           challan_no: string
           created_at?: string
           created_by?: string | null
-          delivery_at?: string | null
           fold_cm?: number | null
           id?: number
           ledger_id?: string | null
@@ -349,21 +452,19 @@ export interface Database {
           ms_party_name: string
           quality_details?: Json | null
           taka: number
+          taka_details?: Json | null
           total_grey_mtr: number
           transport_charge?: number | null
           transport_name?: string | null
           updated_at?: string
           width_inch?: number | null
-          edit_logs?: string | null
         }
         Update: {
           batch_number?: string
-          bill_no?: string | null
           challan_date?: string
           challan_no?: string
           created_at?: string
           created_by?: string | null
-          delivery_at?: string | null
           fold_cm?: number | null
           id?: number
           ledger_id?: string | null
@@ -371,26 +472,28 @@ export interface Database {
           ms_party_name?: string
           quality_details?: Json | null
           taka?: number
+          taka_details?: Json | null
           total_grey_mtr?: number
           transport_charge?: number | null
           transport_name?: string | null
           updated_at?: string
           width_inch?: number | null
-          edit_logs?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "weaver_challans_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "weaver_challans_ledger_id_fkey"
             columns: ["ledger_id"]
+            isOneToOne: false
             referencedRelation: "ledgers"
             referencedColumns: ["ledger_id"]
-          }
+          },
         ]
       }
     }
@@ -398,6 +501,26 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
+      handle_new_user: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          aud: string
+          role: string
+          email: string
+          phone: string
+          created_at: string
+          last_sign_in_at: string
+          app_metadata: Json
+          user_metadata: Json
+          identities: Json
+          updated_at: string
+        }
+      }
+      log_expense_changes: {
+        Args: Record<PropertyKey, never>
+        Returns: unknown
+      }
       log_ledger_changes: {
         Args: Record<PropertyKey, never>
         Returns: unknown
@@ -411,3 +534,83 @@ export interface Database {
     }
   }
 }
+
+export type Tables<
+  PublicTableNameOrOptions extends
+    | keyof (Database["public"]["Tables"] & Database["public"]["Views"])
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+        Database[PublicTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : PublicTableNameOrOptions extends keyof (Database["public"]["Tables"] &
+        Database["public"]["Views"])
+    ? (Database["public"]["Tables"] &
+        Database["public"]["Views"])[PublicTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  PublicTableNameOrOptions extends
+    | keyof Database["public"]["Tables"]
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : PublicTableNameOrOptions extends keyof Database["public"]["Tables"]
+    ? Database["public"]["Tables"][PublicTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  PublicTableNameOrOptions extends
+    | keyof Database["public"]["Tables"]
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : PublicTableNameOrOptions extends keyof Database["public"]["Tables"]
+    ? Database["public"]["Tables"][PublicTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  PublicEnumNameOrOptions extends
+    | keyof Database["public"]["Enums"]
+    | { schema: keyof Database },
+  EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = PublicEnumNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : PublicEnumNameOrOptions extends keyof Database["public"]["Enums"]
+    ? Database["public"]["Enums"][PublicEnumNameOrOptions]
+    : never

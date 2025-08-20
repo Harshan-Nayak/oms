@@ -9,6 +9,7 @@ import Image from 'next/image'
 import { formatDate } from '@/lib/utils'
 import Passbook from '@/components/ledger/passbook'
 import ChallanList from '@/components/ledger/challan-list'
+import ExpenseList from '@/components/ledger/expense-list'
 import {
   Accordion,
   AccordionContent,
@@ -254,6 +255,12 @@ export default async function LedgerDetailPage({ params }: LedgerDetailPageProps
           <AccordionTrigger>Challan Details</AccordionTrigger>
           <AccordionContent>
             <ChallanList ledgerId={ledger.ledger_id} />
+          </AccordionContent>
+        </AccordionItem>
+        <AccordionItem value="expenses">
+          <AccordionTrigger>Expense Details</AccordionTrigger>
+          <AccordionContent>
+            <ExpenseList ledgerId={ledger.ledger_id} />
           </AccordionContent>
         </AccordionItem>
       </Accordion>

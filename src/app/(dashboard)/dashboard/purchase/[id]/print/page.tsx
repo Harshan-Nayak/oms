@@ -29,7 +29,9 @@ async function getPurchaseOrder(id: Promise<{ id: string }>) {
         email,
         address,
         city,
+        district,
         state,
+        zip_code,
         gst_number
       )
     `)

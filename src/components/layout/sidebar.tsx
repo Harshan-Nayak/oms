@@ -64,7 +64,8 @@ export function Sidebar({ profile, isOpen, onClose }: SidebarProps) {
       title: 'Production',
       icon: <Factory className="h-5 w-5" />,
       items: [
-        { title: 'Weaver Challan', href: '/dashboard/production/weaver-challan' }
+        { title: 'Weaver Challan', href: '/dashboard/production/weaver-challan' },
+        { title: 'Expense', href: '/dashboard/production/expense' }
       ]
     },
     {

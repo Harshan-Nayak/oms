@@ -1,7 +1,7 @@
 "use client"
 
 import { formatDate } from '@/lib/utils'
-import { Tables, Json } from '@/types/supabase'
+import { Tables, Json } from '@/types/database'
 
 type PurchaseOrder = Tables<'purchase_orders'> & {
   ledgers: Tables<'ledgers'> | null
@@ -97,10 +97,15 @@ export default function PrintPageClient({ purchaseOrder }: { purchaseOrder: Purc
                     <p>Email: {purchaseOrder.ledgers.email}</p>
                   )}
                   {purchaseOrder.ledgers.address && (
-                    <p>{purchaseOrder.ledgers.address}</p>
-                  )}
-                  {(purchaseOrder.ledgers.city || purchaseOrder.ledgers.state) && (
-                    <p>{purchaseOrder.ledgers.city}, {purchaseOrder.ledgers.state}</p>
+                    <p>
+                      {[
+                        purchaseOrder.ledgers.address,
+                        purchaseOrder.ledgers.city,
+                        purchaseOrder.ledgers.district,
+                        purchaseOrder.ledgers.state,
+                      ].filter(Boolean).join(', ')}
+                      {purchaseOrder.ledgers.zip_code ? ` - ${purchaseOrder.ledgers.zip_code}` : ''}
+                    </p>
                   )}
                   {purchaseOrder.ledgers.gst_number && (
                     <p>GST: {purchaseOrder.ledgers.gst_number}</p>

@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useForm } from 'react-hook-form'
+import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { supabase } from '@/lib/supabase/client'
@@ -12,20 +12,31 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, Factory, Building2, Truck } from 'lucide-react'
-import { Database } from '@/types/database'
+import { Loader2, Factory, Building2, Truck, Plus, Trash2 } from 'lucide-react'
+import { Database, Json } from '@/types/database'
+import { LedgerSelectModal } from './ledger-select-modal'
 
-type WeaverChallan = Database['public']['Tables']['weaver_challans']['Row']
+type WeaverChallan = Database['public']['Tables']['weaver_challans']['Row'] & {
+  delivery_at?: string | null;
+  bill_no?: string | null;
+  edit_logs?: string | null;
+}
 type Ledger = Database['public']['Tables']['ledgers']['Row']
+
+const qualityDetailSchema = z.object({
+  quality_name: z.string().min(1, 'Quality name is required'),
+  rate: z.number().int('Quantity must be a whole number').min(0, 'Quantity must be non-negative'),
+  grey_mtr: z.number().int('Rate must be a whole number').min(0, 'Rate must be non-negative'),
+})
+
+const takaDetailSchema = z.object({
+  taka_number: z.string().min(1, 'Taka number is required'),
+  meters: z.number().min(0.01, 'Meters must be greater than 0'),
+});
 
 const weaverChallanEditSchema = z.object({
   challan_date: z.string().min(1, 'Challan date is required'),
-  batch_number: z.string().min(1, 'Batch number is required'),
-  challan_no: z.string().min(1, 'Challan number is required'),
-  ms_party_name: z.string().min(1, 'MS party name is required'),
   ledger_id: z.string().optional(),
-  delivery_at: z.string().optional(),
-  bill_no: z.string().optional(),
   total_grey_mtr: z.number().min(0.01, 'Total grey meters must be greater than 0'),
   fold_cm: z.number().optional(),
   width_inch: z.number().optional(),
@@ -33,6 +44,8 @@ const weaverChallanEditSchema = z.object({
   transport_name: z.string().optional(),
   lr_number: z.string().optional(),
   transport_charge: z.number().optional(),
+  quality_details: z.array(qualityDetailSchema).min(1, 'At least one quality detail is required'),
+  taka_details: z.array(takaDetailSchema).optional(),
 })
 
 type WeaverChallanEditFormData = z.infer<typeof weaverChallanEditSchema>
@@ -52,22 +65,27 @@ export function WeaverChallanEditForm({ weaverChallan, ledgers, userId, userName
     ledgers.find(l => l.ledger_id === weaverChallan.ledger_id) || null
   )
 
+  const parseDetails = (details: Json | null) => {
+    if (!details) return [];
+    try {
+      return Array.isArray(details) ? details : JSON.parse(details as string);
+    } catch {
+      return [];
+    }
+  };
+
   const {
     register,
     handleSubmit,
     setValue,
     watch,
+    control,
     formState: { errors },
   } = useForm<WeaverChallanEditFormData>({
     resolver: zodResolver(weaverChallanEditSchema),
     defaultValues: {
       challan_date: weaverChallan.challan_date,
-      batch_number: weaverChallan.batch_number,
-      challan_no: weaverChallan.challan_no,
-      ms_party_name: weaverChallan.ms_party_name,
       ledger_id: weaverChallan.ledger_id || '',
-      delivery_at: weaverChallan.delivery_at || '',
-      bill_no: weaverChallan.bill_no || '',
       total_grey_mtr: Number(weaverChallan.total_grey_mtr),
       fold_cm: weaverChallan.fold_cm ? Number(weaverChallan.fold_cm) : undefined,
       width_inch: weaverChallan.width_inch ? Number(weaverChallan.width_inch) : undefined,
@@ -75,17 +93,34 @@ export function WeaverChallanEditForm({ weaverChallan, ledgers, userId, userName
       transport_name: weaverChallan.transport_name || '',
       lr_number: weaverChallan.lr_number || '',
       transport_charge: weaverChallan.transport_charge ? Number(weaverChallan.transport_charge) : undefined,
+      quality_details: parseDetails(weaverChallan.quality_details),
+      taka_details: parseDetails(weaverChallan.taka_details),
     },
   })
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'quality_details',
+  })
+
+  const { fields: takaFields, append: appendTaka, remove: removeTaka } = useFieldArray({
+    control,
+    name: 'taka_details',
+  });
+
+  const qualityDetails = watch('quality_details')
+  const takaValue = watch('taka');
+
+  const calculateTotalGreyMtr = () => {
+    const total = qualityDetails.reduce((sum, detail) => sum + (detail.grey_mtr || 0), 0)
+    setValue('total_grey_mtr', total)
+  }
 
   const handleLedgerSelect = (ledgerId: string) => {
     if (ledgerId && ledgerId !== 'none') {
       const ledger = ledgers.find(l => l.ledger_id === ledgerId)
       setSelectedLedger(ledger || null)
       setValue('ledger_id', ledgerId)
-      if (ledger) {
-        setValue('ms_party_name', ledger.business_name)
-      }
     } else {
       setSelectedLedger(null)
       setValue('ledger_id', '')
@@ -98,20 +133,7 @@ export function WeaverChallanEditForm({ weaverChallan, ledgers, userId, userName
 
     try {
       const updatedWeaverChallanData = {
-        challan_date: data.challan_date,
-        batch_number: data.batch_number,
-        challan_no: data.challan_no,
-        ms_party_name: data.ms_party_name,
-        ledger_id: data.ledger_id || null,
-        delivery_at: data.delivery_at || null,
-        bill_no: data.bill_no || null,
-        total_grey_mtr: data.total_grey_mtr,
-        fold_cm: data.fold_cm || null,
-        width_inch: data.width_inch || null,
-        taka: data.taka,
-        transport_name: data.transport_name || null,
-        lr_number: data.lr_number || null,
-        transport_charge: data.transport_charge || null,
+        ...data,
         updated_at: new Date().toISOString(),
         edit_logs: weaverChallan.edit_logs ? 
           `${weaverChallan.edit_logs}\n${new Date().toISOString()}: Updated by ${userName}` :
@@ -146,77 +168,7 @@ export function WeaverChallanEditForm({ weaverChallan, ledgers, userId, userName
         </Alert>
       )}
 
-      {/* Basic Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Factory className="h-5 w-5 mr-2" />
-            Challan Information
-          </CardTitle>
-          <CardDescription>Update basic challan details</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="challan_date">Challan Date *</Label>
-              <Input
-                id="challan_date"
-                type="date"
-                {...register('challan_date')}
-              />
-              {errors.challan_date && (
-                <p className="text-sm text-red-600">{errors.challan_date.message}</p>
-              )}
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="batch_number">Batch Number *</Label>
-              <Input
-                id="batch_number"
-                {...register('batch_number')}
-                placeholder="Enter batch number"
-              />
-              {errors.batch_number && (
-                <p className="text-sm text-red-600">{errors.batch_number.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="challan_no">Challan Number *</Label>
-              <Input
-                id="challan_no"
-                {...register('challan_no')}
-                placeholder="Enter challan number"
-              />
-              {errors.challan_no && (
-                <p className="text-sm text-red-600">{errors.challan_no.message}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="delivery_at">Delivery Location</Label>
-              <Input
-                id="delivery_at"
-                {...register('delivery_at')}
-                placeholder="Enter delivery location"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="bill_no">Bill Number</Label>
-              <Input
-                id="bill_no"
-                {...register('bill_no')}
-                placeholder="Enter bill number"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Party Information */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -228,74 +180,71 @@ export function WeaverChallanEditForm({ weaverChallan, ledgers, userId, userName
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="ledger_id">Select from Ledger (Optional)</Label>
-            <Select value={watch('ledger_id')} onValueChange={handleLedgerSelect}>
-              <SelectTrigger>
-                <SelectValue placeholder="-- Select Ledger or enter custom party --" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Custom Party</SelectItem>
-                {ledgers.map((ledger) => (
-                  <SelectItem key={ledger.ledger_id} value={ledger.ledger_id}>
-                    <div>
-                      <div className="font-medium">{ledger.business_name}</div>
-                      <div className="text-sm text-gray-500">{ledger.ledger_id}</div>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <LedgerSelectModal ledgers={ledgers} onLedgerSelect={handleLedgerSelect}>
+              <Button type="button" variant="outline" className="w-full justify-start">
+                {selectedLedger ? selectedLedger.business_name : '-- Select Ledger --'}
+              </Button>
+            </LedgerSelectModal>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="ms_party_name">MS Party Name *</Label>
-            <Input
-              id="ms_party_name"
-              {...register('ms_party_name')}
-              placeholder="Enter party name"
-            />
-            {errors.ms_party_name && (
-              <p className="text-sm text-red-600">{errors.ms_party_name.message}</p>
-            )}
-          </div>
-
-          {selectedLedger && (
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h4 className="font-medium text-gray-900 mb-2">Selected Party Details</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                <div><strong>Business:</strong> {selectedLedger.business_name}</div>
-                <div><strong>Contact:</strong> {selectedLedger.contact_person_name || 'N/A'}</div>
-                <div><strong>Mobile:</strong> {selectedLedger.mobile_number || 'N/A'}</div>
-                <div><strong>Email:</strong> {selectedLedger.email || 'N/A'}</div>
-                <div><strong>GST:</strong> {selectedLedger.gst_number || 'N/A'}</div>
-                <div><strong>Address:</strong> {selectedLedger.address || 'N/A'}</div>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
 
-      {/* Production Specifications */}
+    
+
       <Card>
+        <CardHeader>
+          <CardTitle>Quality Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {fields.map((field, index) => (
+            <div key={field.id} className="flex items-center space-x-2 mb-2">
+              <Select
+                onValueChange={(value) => setValue(`quality_details.${index}.quality_name`, value)}
+                defaultValue={field.quality_name}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a quality" />
+                </SelectTrigger>
+                <SelectContent className='bg-white'>
+                  <SelectItem value="Cotton">Cotton</SelectItem>
+                  <SelectItem value="Linen">Linen</SelectItem>
+                  <SelectItem value="Silk">Silk</SelectItem>
+                  <SelectItem value="Wool">Wool</SelectItem>
+                  <SelectItem value="Cashmere">Cashmere</SelectItem>
+                  <SelectItem value="Hemp">Hemp</SelectItem>
+                  <SelectItem value="Polyester">Polyester</SelectItem>
+                  <SelectItem value="Nylon">Nylon</SelectItem>
+                  <SelectItem value="Rayon">Rayon</SelectItem>
+                  <SelectItem value="Lycra">Lycra</SelectItem>
+                  <SelectItem value="Acrylic">Acrylic</SelectItem>
+                  <SelectItem value="Chiffon">Chiffon</SelectItem>
+                  <SelectItem value="Georgette">Georgette</SelectItem>
+                  <SelectItem value="Organza">Organza</SelectItem>
+                  <SelectItem value="Tulle">Tulle</SelectItem>
+                  <SelectItem value="Satin">Satin</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input type="number" {...register(`quality_details.${index}.rate`, { valueAsNumber: true })} placeholder="Rate" />
+              <Input type="number" {...register(`quality_details.${index}.grey_mtr`, { valueAsNumber: true, onChange: calculateTotalGreyMtr })} placeholder="Grey Mtr" />
+              <Button type="button" variant="destructive" onClick={() => remove(index)}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+          {/* <Button type="button" onClick={() => append({ quality_name: '', rate: 0, grey_mtr: 0 })}>
+            <Plus className="h-4 w-4 mr-2" /> Add Quality
+          </Button> */}
+        </CardContent>
+      </Card>
+
+        <Card>
         <CardHeader>
           <CardTitle>Production Specifications</CardTitle>
           <CardDescription>Update production measurements and specifications</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="total_grey_mtr">Total Grey Meters *</Label>
-              <Input
-                id="total_grey_mtr"
-                type="number"
-                step="0.01"
-                {...register('total_grey_mtr', { valueAsNumber: true })}
-                placeholder="0.00"
-              />
-              {errors.total_grey_mtr && (
-                <p className="text-sm text-red-600">{errors.total_grey_mtr.message}</p>
-              )}
-            </div>
-
             <div className="space-y-2">
               <Label htmlFor="fold_cm">Fold (CM)</Label>
               <Input
@@ -334,7 +283,26 @@ export function WeaverChallanEditForm({ weaverChallan, ledgers, userId, userName
         </CardContent>
       </Card>
 
-      {/* Transport Details */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Taka Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {takaFields.map((field, index) => (
+            <div key={field.id} className="flex items-center space-x-2 mb-2">
+              <Input {...register(`taka_details.${index}.taka_number`)} placeholder="Taka Number" />
+              <Input type="number" {...register(`taka_details.${index}.meters`, { valueAsNumber: true })} placeholder="Meters" />
+              <Button type="button" variant="destructive" onClick={() => removeTaka(index)}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+          <Button type="button" onClick={() => appendTaka({ taka_number: '', meters: 0 })}>
+            <Plus className="h-4 w-4 mr-2" /> Add Taka
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -377,7 +345,6 @@ export function WeaverChallanEditForm({ weaverChallan, ledgers, userId, userName
         </CardContent>
       </Card>
 
-      {/* Form Actions */}
       <div className="flex items-center gap-4">
         <Button type="submit" disabled={loading}>
           {loading ? (
@@ -397,6 +364,8 @@ export function WeaverChallanEditForm({ weaverChallan, ledgers, userId, userName
           Cancel
         </Button>
       </div>
+
+
     </form>
   )
 }

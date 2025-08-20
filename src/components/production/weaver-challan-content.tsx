@@ -50,6 +50,7 @@ type WeaverChallan = Database['public']['Tables']['weaver_challans']['Row'] & {
     city: string | null
     state: string | null
   }
+  delivery_at?: string | null
 }
 
 type Ledger = Database['public']['Tables']['ledgers']['Row']
@@ -354,11 +355,11 @@ export function WeaverChallanContent({
                 <TableHead>Batch/Challan</TableHead>
                 <TableHead>Party Name</TableHead>
                 <TableHead>Business</TableHead>
-                <TableHead>Total Grey (Mtr)</TableHead>
+                <TableHead>Rate/mtr</TableHead>
                 <TableHead>Taka</TableHead>
                 <TableHead>Transport</TableHead>
                 <TableHead>Date</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Print</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -421,7 +422,11 @@ export function WeaverChallanContent({
                       {formatDate(challan.created_at)}
                     </div>
                   </TableCell>
-                  <TableCell>{getStatusBadge(challan)}</TableCell>
+                  <TableCell>
+                    <Button variant="outline" size="icon" onClick={() => window.open(`/print/weaver-challan/${challan.id}`, '_blank')}>
+                      <FileText className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -435,12 +440,6 @@ export function WeaverChallanContent({
                         >
                           <Eye className="mr-2 h-4 w-4" />
                           View Details
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => router.push(`/dashboard/production/weaver-challan/${challan.id}/print`)}
-                        >
-                          <FileText className="mr-2 h-4 w-4" />
-                          Print Challan
                         </DropdownMenuItem>
                         {canEdit && (
                           <DropdownMenuItem

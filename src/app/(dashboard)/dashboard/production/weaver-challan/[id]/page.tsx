@@ -26,7 +26,12 @@ import { Tables, Json } from '@/types/supabase'
 
 type WeaverChallan = Tables<'weaver_challans'> & {
   ledgers: Tables<'ledgers'> | null
-}
+};
+
+type QualityDetail = {
+  rate: number;
+  quality_name: string;
+};
 
 interface WeaverChallanDetailPageProps {
   params: Promise<{
@@ -82,16 +87,17 @@ export default async function WeaverChallanDetailPage({ params }: WeaverChallanD
 
   const canEdit = profile.user_role === 'Admin' || profile.user_role === 'Manager'
 
-  const parseQualityDetails = (qualityDetails: Json | null) => {
+  const parseQualityDetails = (qualityDetails: Json | null): QualityDetail[] => {
     if (!qualityDetails) return []
     try {
-      return typeof qualityDetails === 'string' ? JSON.parse(qualityDetails) : qualityDetails
+      const parsed = typeof qualityDetails === 'string' ? JSON.parse(qualityDetails) : qualityDetails;
+      return Array.isArray(parsed) ? parsed : [];
     } catch {
       return []
     }
   }
 
-  const qualityDetails = parseQualityDetails(weaverChallan.quality_details)
+  const qualityDetails = parseQualityDetails(weaverChallan.quality_details);
 
   const parseTakaDetails = (takaDetails: Json | null) => {
     if (!takaDetails) return []
@@ -123,12 +129,12 @@ export default async function WeaverChallanDetailPage({ params }: WeaverChallanD
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <Link href={`/dashboard/production/weaver-challan/${weaverChallan.id}/print`}>
+          {/* <Link href={`/print/weaver-challan/${weaverChallan.id}`} target="_blank">
             <Button variant="outline">
               <Printer className="h-4 w-4 mr-2" />
               Print Challan
             </Button>
-          </Link>
+          </Link> */}
           {canEdit && (
             <Link href={`/dashboard/production/weaver-challan/${weaverChallan.id}/edit`}>
               <Button>
@@ -166,9 +172,9 @@ export default async function WeaverChallanDetailPage({ params }: WeaverChallanD
               </p>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Total Grey Meters</label>
+              <label className="text-sm font-medium text-gray-700">Rate Per Meter</label>
               <p className="text-2xl font-bold text-green-600">
-                {weaverChallan.total_grey_mtr} meters
+                ₹{weaverChallan.total_grey_mtr} 
               </p>
             </div>
             <div>
@@ -189,10 +195,10 @@ export default async function WeaverChallanDetailPage({ params }: WeaverChallanD
               <CardDescription>Weaver party details and contact information</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
+              {/* <div>
                 <label className="text-sm font-medium text-gray-700">MS Party Name</label>
                 <p className="text-lg font-semibold">{weaverChallan.ms_party_name}</p>
-              </div>
+              </div> */}
               
               {weaverChallan.ledgers && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -256,8 +262,8 @@ export default async function WeaverChallanDetailPage({ params }: WeaverChallanD
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Total Grey Meters</label>
-                  <p className="text-lg font-semibold">{weaverChallan.total_grey_mtr} meters</p>
+                  <label className="text-sm font-medium text-gray-700">Rate per mtr</label>
+                  <p className="text-lg font-semibold">₹ {weaverChallan.total_grey_mtr} </p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">Fold (CM)</label>
@@ -271,27 +277,20 @@ export default async function WeaverChallanDetailPage({ params }: WeaverChallanD
                   <label className="text-sm font-medium text-gray-700">Taka Count</label>
                   <p className="text-lg font-semibold">{weaverChallan.taka} taka</p>
                 </div>
-              </div>
+                {qualityDetails.length > 0 && qualityDetails[0] && (
+                  <>
+                    <div>
+                      <label className="text-sm font-medium text-gray-700">Quantity (Mtr)</label>
 
-              {qualityDetails.length > 0 && (
-                <div className="mt-6">
-                  <label className="text-sm font-medium text-gray-700 mb-3 block">Quality Details</label>
-                  <div className="space-y-2">
-                    {qualityDetails.map((detail: { [key: string]: string | number }, index: number) => (
-                      <div key={index} className="bg-gray-50 p-3 rounded-lg">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
-                          {Object.entries(detail).map(([key, value]) => (
-                            <div key={key}>
-                              <span className="font-medium capitalize">{key.replace('_', ' ')}:</span>
-                              <span className="ml-2">{String(value)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                      <p className="text-lg font-semibold">{qualityDetails[0].rate}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-700">Quality Name</label>
+                      <p className="text-lg font-semibold">{qualityDetails[0].quality_name}</p>
+                    </div>
+                  </>
+                )}
+              </div>
             </CardContent>
           </Card>
 
