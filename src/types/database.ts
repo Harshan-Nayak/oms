@@ -496,6 +496,96 @@ export type Database = {
           },
         ]
       }
+      payment_vouchers: {
+        Row: {
+          id: number
+          date: string
+          ledger_id: string | null
+          payment_for: string
+          payment_type: string
+          amount: number
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          date: string
+          ledger_id?: string | null
+          payment_for: string
+          payment_type: string
+          amount: number
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          date?: string
+          ledger_id?: string | null
+          payment_for?: string
+          payment_type?: string
+          amount?: number
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_vouchers_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_vouchers_ledger_id_fkey"
+            columns: ["ledger_id"]
+            isOneToOne: false
+            referencedRelation: "ledgers"
+            referencedColumns: ["ledger_id"]
+          },
+        ]
+      }
+      payment_voucher_logs: {
+        Row: {
+          id: number
+          payment_voucher_id: number | null
+          changed_by: string | null
+          changes: Json | null
+          changed_at: string
+        }
+        Insert: {
+          id?: number
+          payment_voucher_id?: number | null
+          changed_by?: string | null
+          changes?: Json | null
+          changed_at?: string
+        }
+        Update: {
+          id?: number
+          payment_voucher_id?: number | null
+          changed_by?: string | null
+          changes?: Json | null
+          changed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_voucher_logs_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_voucher_logs_payment_voucher_id_fkey"
+            columns: ["payment_voucher_id"]
+            isOneToOne: false
+            referencedRelation: "payment_vouchers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -522,6 +612,10 @@ export type Database = {
         Returns: unknown
       }
       log_ledger_changes: {
+        Args: Record<PropertyKey, never>
+        Returns: unknown
+      }
+      log_payment_voucher_changes: {
         Args: Record<PropertyKey, never>
         Returns: unknown
       }

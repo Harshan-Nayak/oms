@@ -34,21 +34,24 @@ export default async function ProductsPage() {
     .from('products')
     .select('product_category')
     .not('product_category', 'is', null)
+    .neq('product_category', '')
 
   const { data: colors } = await supabase
     .from('products')
     .select('product_color')
     .not('product_color', 'is', null)
+    .neq('product_color', '')
 
   const { data: materials } = await supabase
     .from('products')
     .select('product_material')
     .not('product_material', 'is', null)
+    .neq('product_material', '')
 
   const filterOptions = {
-    categories: [...new Set(categories?.map(p => p.product_category) || [])],
-    colors: [...new Set(colors?.map(p => p.product_color) || [])],
-    materials: [...new Set(materials?.map(p => p.product_material) || [])],
+    categories: [...new Set(categories?.map(p => p.product_category).filter(Boolean) || [])],
+    colors: [...new Set(colors?.map(p => p.product_color).filter(Boolean) || [])],
+    materials: [...new Set(materials?.map(p => p.product_material).filter(Boolean) || [])],
     statuses: ['Active', 'Inactive']
   }
 

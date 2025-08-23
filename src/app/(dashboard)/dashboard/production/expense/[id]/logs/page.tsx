@@ -22,13 +22,13 @@ export default async function ExpenseLogsPage({ params }: ExpenseLogsPageProps) 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: logs, error } = await supabase
+  const { data: logs, error: logsError } = await supabase
     .from('expense_logs')
     .select(`*`)
     .eq('expense_id', resolvedParams.id)
     .order('changed_at', { ascending: false });
 
-  if (error || !logs) {
+  if (logsError || !logs) {
     notFound();
   }
 

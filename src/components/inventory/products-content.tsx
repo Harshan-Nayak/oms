@@ -169,7 +169,7 @@ export function ProductsContent({ products, totalCount, filterOptions, userRole 
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
-                {filterOptions.categories.map((category) => (
+                {filterOptions.categories.filter(category => category && category.trim() !== '').map((category) => (
                   <SelectItem key={category} value={category}>
                     {category}
                   </SelectItem>
@@ -182,7 +182,7 @@ export function ProductsContent({ products, totalCount, filterOptions, userRole 
                 <SelectValue placeholder="Color" />
               </SelectTrigger>
               <SelectContent>
-                {filterOptions.colors.map((color) => (
+                {filterOptions.colors.filter(color => color && color.trim() !== '').map((color) => (
                   <SelectItem key={color} value={color}>
                     {color}
                   </SelectItem>
@@ -195,7 +195,7 @@ export function ProductsContent({ products, totalCount, filterOptions, userRole 
                 <SelectValue placeholder="Material" />
               </SelectTrigger>
               <SelectContent>
-                {filterOptions.materials.map((material) => (
+                {filterOptions.materials.filter(material => material && material.trim() !== '').map((material) => (
                   <SelectItem key={material} value={material}>
                     {material}
                   </SelectItem>
@@ -208,7 +208,7 @@ export function ProductsContent({ products, totalCount, filterOptions, userRole 
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                {filterOptions.statuses.map((status) => (
+                {filterOptions.statuses.filter(status => status && status.trim() !== '').map((status) => (
                   <SelectItem key={status} value={status}>
                     {status}
                   </SelectItem>

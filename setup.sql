@@ -433,7 +433,7 @@ CREATE POLICY "Admin and Manager can insert expense logs" ON public.expense_logs
 
 -- Function to log expense changes
 CREATE OR REPLACE FUNCTION public.log_expense_changes()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $
 DECLARE
   changes jsonb := '{}'::jsonb;
   r record;
@@ -452,12 +452,127 @@ BEGIN
   
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY INVOKER;
+$ LANGUAGE plpgsql SECURITY INVOKER;
 
 -- Trigger to log expense changes
 CREATE TRIGGER on_expense_update
   AFTER UPDATE ON public.expenses
   FOR EACH ROW EXECUTE FUNCTION public.log_expense_changes();
+
+-- Create payment_vouchers table
+CREATE TABLE public.payment_vouchers (
+  id SERIAL PRIMARY KEY,
+  date DATE NOT NULL,
+  ledger_id TEXT REFERENCES ledgers(ledger_id) ON DELETE SET NULL,
+  payment_for TEXT NOT NULL,
+  payment_type TEXT CHECK (payment_type IN ('Credit', 'Debit')) NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  created_by UUID REFERENCES auth.users(id),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Add foreign key constraint
+ALTER TABLE public.payment_vouchers
+  ADD CONSTRAINT payment_vouchers_created_by_fkey
+  FOREIGN KEY (created_by)
+  REFERENCES auth.users(id);
+
+-- Create payment_voucher_logs table
+CREATE TABLE public.payment_voucher_logs (
+  id SERIAL PRIMARY KEY,
+  payment_voucher_id INTEGER REFERENCES public.payment_vouchers(id) ON DELETE CASCADE,
+  changed_by UUID REFERENCES auth.users(id),
+  changes JSONB,
+  changed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Enable RLS on new tables
+ALTER TABLE public.payment_vouchers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.payment_voucher_logs ENABLE ROW LEVEL SECURITY;
+
+-- Payment Vouchers policies
+CREATE POLICY "All authenticated users can view payment vouchers" ON public.payment_vouchers
+  FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Admin and Manager can insert payment vouchers" ON public.payment_vouchers
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid()
+      AND user_role IN ('Admin', 'Manager')
+    )
+  );
+
+CREATE POLICY "Admin and Manager can update payment vouchers" ON public.payment_vouchers
+  FOR UPDATE TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid()
+      AND user_role IN ('Admin', 'Manager')
+    )
+  );
+
+CREATE POLICY "Admin and Manager can delete payment vouchers" ON public.payment_vouchers
+  FOR DELETE TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid()
+      AND user_role IN ('Admin', 'Manager')
+    )
+  );
+
+-- Payment Voucher Logs policies
+CREATE POLICY "Admin and Manager can view payment voucher logs" ON public.payment_voucher_logs
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid()
+      AND user_role IN ('Admin', 'Manager')
+    )
+  );
+
+CREATE POLICY "Admin and Manager can insert payment voucher logs" ON public.payment_voucher_logs
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid()
+      AND user_role IN ('Admin', 'Manager')
+    )
+  );
+
+-- Function to log payment voucher changes
+CREATE OR REPLACE FUNCTION public.log_payment_voucher_changes()
+RETURNS TRIGGER AS $
+DECLARE
+  changes jsonb := '{}'::jsonb;
+  r record;
+BEGIN
+  FOR r IN SELECT * FROM jsonb_each(to_jsonb(NEW))
+  LOOP
+    IF r.key <> 'updated_at' AND r.value <> (to_jsonb(OLD) -> r.key) THEN
+      changes := changes || jsonb_build_object(r.key, jsonb_build_object('old', (to_jsonb(OLD) -> r.key), 'new', r.value));
+    END IF;
+  END LOOP;
+
+  IF changes <> '{}'::jsonb THEN
+    INSERT INTO public.payment_voucher_logs (payment_voucher_id, changed_by, changes)
+    VALUES (NEW.id, auth.uid(), changes);
+  END IF;
+  
+  RETURN NEW;
+END;
+$ LANGUAGE plpgsql SECURITY INVOKER;
+
+-- Trigger to log payment voucher changes
+CREATE TRIGGER on_payment_voucher_update
+  AFTER UPDATE ON public.payment_vouchers
+  FOR EACH ROW EXECUTE FUNCTION public.log_payment_voucher_changes();
 
 -- Set up first admin user (UPDATE - replace email with your actual email)
 -- Note: This should be run AFTER you've signed up with your email in the app

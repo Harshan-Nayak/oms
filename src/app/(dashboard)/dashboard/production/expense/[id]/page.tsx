@@ -19,7 +19,7 @@ export default async function ViewExpensePage({ params }: ViewExpensePageProps) 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: expense, error } = await supabase
+  const { data: expense, error: expenseError } = await supabase
     .from('expenses')
     .select(`
       *,
@@ -29,7 +29,7 @@ export default async function ViewExpensePage({ params }: ViewExpensePageProps) 
     .eq('id', resolvedParams.id)
     .single();
 
-  if (error || !expense) notFound();
+  if (expenseError || !expense) notFound();
 
   const { data: profile } = await supabase
     .from('profiles')
