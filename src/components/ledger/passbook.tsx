@@ -17,6 +17,7 @@ interface Transaction {
   remark: string;
   credit: number;
   debit: number;
+  balance: number;
 }
 
 export default function Passbook({ ledgerId }: PassbookProps) {
@@ -31,13 +32,13 @@ export default function Passbook({ ledgerId }: PassbookProps) {
         .select('challan_no, challan_date, total_grey_mtr, quality_details')
         .eq('ledger_id', ledgerId);
 
-      const { data: expenses, error: expenseError } = await supabase
-        .from('expenses')
-        .select('expense_date, challan_no, expense_for, cost, other_expense_description')
+      const { data: paymentVouchers, error: paymentVoucherError } = await supabase
+        .from('payment_vouchers')
+        .select('id, date, payment_for, payment_type, amount')
         .eq('ledger_id', ledgerId);
 
-      if (challanError || expenseError) {
-        console.error('Error fetching data:', challanError || expenseError);
+      if (challanError || paymentVoucherError) {
+        console.error('Error fetching data:', challanError || paymentVoucherError);
       } else {
         const challanTransactions = (challans || []).map(c => ({
           date: c.challan_date,
@@ -47,26 +48,30 @@ export default function Passbook({ ledgerId }: PassbookProps) {
           debit: 0,
         }));
 
-        const expenseTransactions = (expenses || []).map(e => ({
-          date: e.expense_date,
-          detail: e.expense_for.includes('Other') ? e.other_expense_description || e.expense_for.join(', ') : e.expense_for.join(', '),
-          remark: e.challan_no,
-          credit: e.cost,
-          debit: 0,
+        const paymentVoucherTransactions = (paymentVouchers || []).map(pv => ({
+          date: pv.date,
+          detail: 'Payment Voucher',
+          remark: pv.payment_for,
+          credit: pv.payment_type === 'Credit' ? pv.amount : 0,
+          debit: pv.payment_type === 'Debit' ? pv.amount : 0,
         }));
 
-        const allTransactions = [...challanTransactions, ...expenseTransactions]
+        const allTransactions = [...challanTransactions, ...paymentVoucherTransactions]
           .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         
-        setTransactions(allTransactions);
+        let runningBalance = 0;
+        const transactionsWithBalance = allTransactions.map(tx => {
+          runningBalance += tx.credit - tx.debit;
+          return { ...tx, balance: runningBalance };
+        });
+
+        setTransactions(transactionsWithBalance.reverse());
       }
       setLoading(false);
     }
 
     fetchData();
   }, [ledgerId, supabase]);
-
-  let balance = 0;
 
   return (
     <Card>
@@ -90,20 +95,17 @@ export default function Passbook({ ledgerId }: PassbookProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {transactions.map((transaction, index) => {
-                balance += transaction.credit - transaction.debit;
-                return (
-                  <TableRow key={index}>
-                    <TableCell>{index + 1}</TableCell>
-                    <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
-                    <TableCell>{transaction.detail}</TableCell>
-                    <TableCell>{transaction.remark}</TableCell>
-                    <TableCell>₹{transaction.credit.toFixed(2)}</TableCell>
-                    <TableCell>₹{transaction.debit.toFixed(2)}</TableCell>
-                    <TableCell>{balance.toFixed(2)}</TableCell>
-                  </TableRow>
-                );
-              })}
+              {transactions.map((transaction, index) => (
+                <TableRow key={index}>
+                  <TableCell>{index + 1}</TableCell>
+                  <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
+                  <TableCell>{transaction.detail}</TableCell>
+                  <TableCell>{transaction.remark}</TableCell>
+                  <TableCell>₹{transaction.credit.toFixed(2)}</TableCell>
+                  <TableCell>₹{transaction.debit.toFixed(2)}</TableCell>
+                  <TableCell>₹{transaction.balance.toFixed(2)}</TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         )}

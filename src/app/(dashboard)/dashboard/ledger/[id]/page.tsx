@@ -10,6 +10,7 @@ import { formatDate } from '@/lib/utils'
 import Passbook from '@/components/ledger/passbook'
 import ChallanList from '@/components/ledger/challan-list'
 import ExpenseList from '@/components/ledger/expense-list'
+import PaymentVoucherList from '@/components/ledger/payment-voucher-list'
 import {
   Accordion,
   AccordionContent,
@@ -261,6 +262,12 @@ export default async function LedgerDetailPage({ params }: LedgerDetailPageProps
           <AccordionTrigger>Expense Details</AccordionTrigger>
           <AccordionContent>
             <ExpenseList ledgerId={ledger.ledger_id} />
+          </AccordionContent>
+        </AccordionItem>
+        <AccordionItem value="payment-vouchers">
+          <AccordionTrigger>Payment Vouchers</AccordionTrigger>
+          <AccordionContent>
+            <PaymentVoucherList ledgerId={ledger.ledger_id} />
           </AccordionContent>
         </AccordionItem>
       </Accordion>
