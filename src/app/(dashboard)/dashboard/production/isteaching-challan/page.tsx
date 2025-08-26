@@ -52,6 +52,10 @@ export default async function IsteachingChallanPage() {
           .filter(Boolean)
       )].map(name => ({ product_name: name as string }))
     : []
+    
+  const { data: products } = await supabase
+    .from('products')
+    .select('product_name, product_qty')
 
   // Fetch batch numbers from weaver_challans
   const { data: batchNumbers } = await supabase
@@ -66,6 +70,8 @@ export default async function IsteachingChallanPage() {
       qualities={qualities || []}
       batchNumbers={batchNumbers || []}
       userRole={profile.user_role}
+      products={products || []}
+      weaverChallans={weaverChallans || []}
     />
   )
 }

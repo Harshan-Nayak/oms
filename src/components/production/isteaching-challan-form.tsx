@@ -30,6 +30,8 @@ type Ledger = Database['public']['Tables']['ledgers']['Row']
 type Quality = { product_name: string }
 type BatchNumber = { batch_number: string, quality_details: Json }
 type IsteachingChallan = Database['public']['Tables']['isteaching_challans']['Insert']
+type Product = { product_name: string, product_qty: number | null }
+type WeaverChallan = { quality_details: Json }
 
 const sizeSchema = z.object({
   size: z.string().min(1, 'Size is required'),
@@ -56,10 +58,12 @@ interface IsteachingChallanFormProps {
   ledgers: Ledger[]
   qualities: Quality[]
   batchNumbers: BatchNumber[]
+  products: Product[]
+  weaverChallans: WeaverChallan[]
   onSuccess: () => void
 }
 
-export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, onSuccess }: IsteachingChallanFormProps) {
+export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, products, weaverChallans, onSuccess }: IsteachingChallanFormProps) {
   const { showToast } = useToast()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -68,6 +72,7 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, onSucc
   const [productImageFile, setProductImageFile] = useState<File | null>(null)
   const [productImagePreview, setProductImagePreview] = useState<string | null>(null)
   const [isAlertOpen, setIsAlertOpen] = useState(false)
+  const [maxQuantity, setMaxQuantity] = useState<number | null>(null)
 
   const {
     register,
@@ -92,6 +97,20 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, onSucc
   const selectedQuality = watch('quality')
   const productQty = watch('product_qty')
   const productSizes = watch('product_size')
+
+  useEffect(() => {
+    if (selectedQuality) {
+      const totalQty = weaverChallans.reduce((sum, challan) => {
+        if (!challan.quality_details) return sum
+        const details = Array.isArray(challan.quality_details) ? challan.quality_details : [challan.quality_details]
+        const qualityDetail = (details as { quality_name: string, rate: number }[]).find(d => d.quality_name === selectedQuality)
+        return sum + (qualityDetail?.rate || 0)
+      }, 0)
+      setMaxQuantity(totalQty)
+    } else {
+      setMaxQuantity(null)
+    }
+  }, [selectedQuality, weaverChallans])
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -176,6 +195,13 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, onSucc
   const onSubmit = async (data: IsteachingChallanFormData) => {
     setLoading(true)
     setError('')
+
+    if (maxQuantity !== null && data.quantity > maxQuantity) {
+      setError(`Quantity cannot exceed the available stock of ${maxQuantity}.`)
+      setIsAlertOpen(true)
+      setLoading(false)
+      return
+    }
 
     const totalSizeQty = data.product_size?.reduce((sum, s) => sum + s.quantity, 0) || 0
     if (data.product_qty && totalSizeQty > data.product_qty) {
@@ -298,8 +324,9 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, onSucc
 
           <div className="space-y-2">
             <Label htmlFor="quantity">Enter Quantity *</Label>
-            <Input id="quantity" type="number" {...register('quantity', { valueAsNumber: true })} />
+            <Input id="quantity" type="number" {...register('quantity', { valueAsNumber: true })} max={maxQuantity ?? undefined} />
             {errors.quantity && <p className="text-sm text-red-600">{errors.quantity.message}</p>}
+            {maxQuantity !== null && <p className="text-sm text-gray-500">Available: {maxQuantity}</p>}
           </div>
         </CardContent>
       </Card>
