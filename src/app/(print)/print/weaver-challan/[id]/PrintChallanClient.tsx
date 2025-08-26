@@ -122,6 +122,7 @@ CIRLCE,
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
+                <th className="p-2 text-left font-semibold text-gray-600">SR. NO.</th>
                 <th className="p-2 text-left font-semibold text-gray-600">TAKA NO.</th>
                 <th className="p-2 text-right font-semibold text-gray-600">METERS</th>
               </tr>
@@ -129,6 +130,7 @@ CIRLCE,
             <tbody>
               {takaDetails.map((taka: { taka_number: string; meters: number }, index: number) => (
                 <tr key={index} className="border-b">
+                  <td className="p-2">{index + 1}</td>
                   <td className="p-2">{taka.taka_number}</td>
                   <td className="p-2 text-right">{taka.meters.toFixed(2)}</td>
                 </tr>
@@ -150,10 +152,10 @@ CIRLCE,
           </div>
         </section>
 
-        {(weaverChallan.transport_name || weaverChallan.lr_number || weaverChallan.transport_charge) && (
+        {(weaverChallan.transport_name || weaverChallan.lr_number) && (
           <section className="mt-8">
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Transport Details</h3>
-            <div className="grid grid-cols-3 gap-4 text-sm p-4 bg-gray-50 rounded-lg">
+            <div className="grid grid-cols-2 gap-4 text-sm p-4 bg-gray-50 rounded-lg">
               <div className="text-left">
                 <p className="font-semibold">Transport:</p>
                 <p>{weaverChallan.transport_name}</p>
@@ -161,10 +163,6 @@ CIRLCE,
               <div className="text-center">
                 <p className="font-semibold">LR Number:</p>
                 <p>{weaverChallan.lr_number}</p>
-              </div>
-              <div className="text-right">
-                <p className="font-semibold">Charge:</p>
-                <p>₹{weaverChallan.transport_charge?.toLocaleString()}</p>
               </div>
             </div>
           </section>
