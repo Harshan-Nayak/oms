@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -76,6 +76,21 @@ export function PaymentVoucherContent({
   const [deletingId, setDeletingId] = useState<number | null>(null);
   
   const canEdit = userRole === 'Admin' || userRole === 'Manager';
+
+  const voucherSequenceMap = useMemo(() => {
+    const sortedVouchers = [...paymentVouchers].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    let creditCounter = 1;
+    let debitCounter = 1;
+    const map = new Map<number, number>();
+    sortedVouchers.forEach(voucher => {
+      if (voucher.payment_type === 'Credit') {
+        map.set(voucher.id, creditCounter++);
+      } else {
+        map.set(voucher.id, debitCounter++);
+      }
+    });
+    return map;
+  }, [paymentVouchers]);
 
   const filteredPaymentVouchers = paymentVouchers.filter(voucher => {
     const matchesSearch = !searchTerm || 
@@ -482,6 +497,7 @@ export function PaymentVoucherContent({
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Voucher ID</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Ledger</TableHead>
                 <TableHead>Payment For</TableHead>
@@ -491,8 +507,18 @@ export function PaymentVoucherContent({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredPaymentVouchers.map((voucher) => (
+              {filteredPaymentVouchers.map((voucher) => {
+                const date = new Date(voucher.date);
+                const year = date.getFullYear();
+                const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                const sequenceId = voucherSequenceMap.get(voucher.id) || 0;
+                const paddedId = sequenceId.toString().padStart(3, '0');
+                const type = voucher.payment_type === 'Credit' ? 'C' : 'D';
+                const voucherId = `VCH-${type}-${year}${month}${paddedId}`;
+
+                return (
                 <TableRow key={voucher.id}>
+                  <TableCell>{voucherId}</TableCell>
                   <TableCell>
                     <div className="flex items-center text-sm">
                       <Calendar className="h-3 w-3 mr-1" />
@@ -589,7 +615,8 @@ export function PaymentVoucherContent({
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))}
+              );
+            })}
             </TableBody>
           </Table>
           

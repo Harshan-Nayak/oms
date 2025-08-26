@@ -32,6 +32,18 @@ export default async function PaymentVoucherList({ ledgerId }: PaymentVoucherLis
     return <p>No payment vouchers found for this ledger.</p>
   }
 
+  const sortedVouchers = [...paymentVouchers].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  let creditCounter = 1;
+  let debitCounter = 1;
+  const voucherSequenceMap = new Map<number, number>();
+  sortedVouchers.forEach(voucher => {
+    if (voucher.payment_type === 'Credit') {
+      voucherSequenceMap.set(voucher.id, creditCounter++);
+    } else {
+      voucherSequenceMap.set(voucher.id, debitCounter++);
+    }
+  });
+
   return (
     <div className="rounded-lg border">
       <Table>
@@ -46,14 +58,23 @@ export default async function PaymentVoucherList({ ledgerId }: PaymentVoucherLis
           </TableRow>
         </TableHeader>
         <TableBody>
-          {paymentVouchers.map(voucher => (
-            <TableRow key={voucher.id}>
-              <TableCell className="font-medium">
-                <Link href={`/dashboard/production/payment-voucher/${voucher.id}`} className="text-blue-600 hover:underline">
-                  {voucher.id}
-                </Link>
-              </TableCell>
-              <TableCell>{formatDate(voucher.date)}</TableCell>
+          {paymentVouchers.map(voucher => {
+            const date = new Date(voucher.date);
+            const year = date.getFullYear();
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const sequenceId = voucherSequenceMap.get(voucher.id) || 0;
+            const paddedId = sequenceId.toString().padStart(3, '0');
+            const type = voucher.payment_type === 'Credit' ? 'C' : 'D';
+            const voucherId = `VCH-${type}-${year}${month}${paddedId}`;
+
+            return (
+              <TableRow key={voucher.id}>
+                <TableCell className="font-medium">
+                  <Link href={`/dashboard/production/payment-voucher/${voucher.id}`} className="text-blue-600 hover:underline">
+                    {voucherId}
+                  </Link>
+                </TableCell>
+                <TableCell>{formatDate(voucher.date)}</TableCell>
               <TableCell>{voucher.payment_for}</TableCell>
               <TableCell>
                 <Badge variant={voucher.payment_type === 'Credit' ? 'default' : 'secondary'}>
@@ -67,7 +88,8 @@ export default async function PaymentVoucherList({ ledgerId }: PaymentVoucherLis
                 </Link>
               </TableCell>
             </TableRow>
-          ))}
+            );
+          })}
         </TableBody>
       </Table>
     </div>
