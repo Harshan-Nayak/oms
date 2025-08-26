@@ -9,6 +9,117 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      isteaching_challans: {
+        Row: {
+          id: number
+          date: string
+          ledger_id: string | null
+          quality: string
+          batch_number: string
+          quantity: number
+          product_name: string | null
+          product_description: string | null
+          product_image: string | null
+          product_sku: string | null
+          product_qty: number | null
+          product_color: string | null
+          product_size: Json | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          date: string
+          ledger_id?: string | null
+          quality: string
+          batch_number: string
+          quantity: number
+          product_name?: string | null
+          product_description?: string | null
+          product_image?: string | null
+          product_sku?: string | null
+          product_qty?: number | null
+          product_color?: string | null
+          product_size?: Json | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          date?: string
+          ledger_id?: string | null
+          quality?: string
+          batch_number?: string
+          quantity?: number
+          product_name?: string | null
+          product_description?: string | null
+          product_image?: string | null
+          product_sku?: string | null
+          product_qty?: number | null
+          product_color?: string | null
+          product_size?: Json | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "isteaching_challans_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "isteaching_challans_ledger_id_fkey"
+            columns: ["ledger_id"]
+            isOneToOne: false
+            referencedRelation: "ledgers"
+            referencedColumns: ["ledger_id"]
+          }
+        ]
+      }
+      isteaching_challan_logs: {
+        Row: {
+          id: number
+          challan_id: number | null
+          changed_by: string | null
+          changes: Json | null
+          changed_at: string
+        }
+        Insert: {
+          id?: number
+          challan_id?: number | null
+          changed_by?: string | null
+          changes?: Json | null
+          changed_at?: string
+        }
+        Update: {
+          id?: number
+          challan_id?: number | null
+          changed_by?: string | null
+          changes?: Json | null
+          changed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "isteaching_challan_logs_challan_id_fkey"
+            columns: ["challan_id"]
+            isOneToOne: false
+            referencedRelation: "isteaching_challans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "isteaching_challan_logs_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       ledgers: {
         Row: {
           address: string | null

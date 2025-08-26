@@ -110,6 +110,35 @@ CREATE TABLE public.ledger_logs (
   changed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Create isteaching_challans table
+CREATE TABLE public.isteaching_challans (
+  id SERIAL PRIMARY KEY,
+  date DATE NOT NULL,
+  ledger_id TEXT REFERENCES ledgers(ledger_id) ON DELETE SET NULL,
+  quality TEXT NOT NULL,
+  batch_number TEXT NOT NULL,
+  quantity DECIMAL(10,2) NOT NULL,
+  product_name TEXT,
+  product_description TEXT,
+  product_image TEXT,
+  product_sku TEXT,
+  product_qty INTEGER,
+  product_color TEXT,
+  product_size JSONB,
+  created_by UUID REFERENCES auth.users(id),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create isteaching_challan_logs table
+CREATE TABLE public.isteaching_challan_logs (
+  id SERIAL PRIMARY KEY,
+  challan_id INTEGER REFERENCES public.isteaching_challans(id) ON DELETE CASCADE,
+  changed_by UUID REFERENCES auth.users(id),
+  changes JSONB,
+  changed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Enable RLS on all tables
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
@@ -117,6 +146,8 @@ ALTER TABLE public.ledgers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.weaver_challans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.purchase_orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ledger_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.isteaching_challans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.isteaching_challan_logs ENABLE ROW LEVEL SECURITY;
 
 -- Profiles policies
 CREATE POLICY "Users can view own profile" ON public.profiles
@@ -275,6 +306,61 @@ CREATE POLICY "Admin and Manager can update weaver challans" ON public.weaver_ch
 CREATE POLICY "Admin and Manager can delete weaver challans" ON public.weaver_challans
   FOR DELETE TO authenticated
   USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid()
+      AND user_role IN ('Admin', 'Manager')
+    )
+  );
+
+-- Isteaching Challans policies
+CREATE POLICY "All authenticated users can view isteaching challans" ON public.isteaching_challans
+  FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Admin and Manager can insert isteaching challans" ON public.isteaching_challans
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid()
+      AND user_role IN ('Admin', 'Manager')
+    )
+  );
+
+CREATE POLICY "Admin and Manager can update isteaching challans" ON public.isteaching_challans
+  FOR UPDATE TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid()
+      AND user_role IN ('Admin', 'Manager')
+    )
+  );
+
+CREATE POLICY "Admin and Manager can delete isteaching challans" ON public.isteaching_challans
+  FOR DELETE TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid()
+      AND user_role IN ('Admin', 'Manager')
+    )
+  );
+
+-- Isteaching Challan Logs policies
+CREATE POLICY "Admin and Manager can view isteaching challan logs" ON public.isteaching_challan_logs
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid()
+      AND user_role IN ('Admin', 'Manager')
+    )
+  );
+
+CREATE POLICY "Admin and Manager can insert isteaching challan logs" ON public.isteaching_challan_logs
+  FOR INSERT TO authenticated
+  WITH CHECK (
     EXISTS (
       SELECT 1 FROM public.profiles
       WHERE id = auth.uid()
@@ -573,6 +659,34 @@ $ LANGUAGE plpgsql SECURITY INVOKER;
 CREATE TRIGGER on_payment_voucher_update
   AFTER UPDATE ON public.payment_vouchers
   FOR EACH ROW EXECUTE FUNCTION public.log_payment_voucher_changes();
+
+-- Function to log isteaching_challan changes
+CREATE OR REPLACE FUNCTION public.log_isteaching_challan_changes()
+RETURNS TRIGGER AS $$
+DECLARE
+  changes jsonb := '{}'::jsonb;
+  r record;
+BEGIN
+  FOR r IN SELECT * FROM jsonb_each(to_jsonb(NEW))
+  LOOP
+    IF r.key <> 'updated_at' AND r.value <> (to_jsonb(OLD) -> r.key) THEN
+      changes := changes || jsonb_build_object(r.key, jsonb_build_object('old', (to_jsonb(OLD) -> r.key), 'new', r.value));
+    END IF;
+  END LOOP;
+
+  IF changes <> '{}'::jsonb THEN
+    INSERT INTO public.isteaching_challan_logs (challan_id, changed_by, changes)
+    VALUES (NEW.id, auth.uid(), changes);
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY INVOKER;
+
+-- Trigger to log isteaching_challan changes
+CREATE TRIGGER on_isteaching_challan_update
+  AFTER UPDATE ON public.isteaching_challans
+  FOR EACH ROW EXECUTE FUNCTION public.log_isteaching_challan_changes();
 
 -- Set up first admin user (UPDATE - replace email with your actual email)
 -- Note: This should be run AFTER you've signed up with your email in the app
