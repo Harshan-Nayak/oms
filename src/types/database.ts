@@ -111,11 +111,12 @@ export type Database = {
       }
       isteaching_challans: {
         Row: {
+          challan_no: string
           id: number
           date: string
           ledger_id: string | null
           quality: string
-          batch_number: string
+          batch_number: string[]
           quantity: number
           product_name: string | null
           product_description: string | null
@@ -129,11 +130,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          challan_no: string
           id?: number
           date: string
           ledger_id?: string | null
           quality: string
-          batch_number: string
+          batch_number: string[]
           quantity: number
           product_name?: string | null
           product_description?: string | null
@@ -147,11 +149,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          challan_no?: string
           id?: number
           date?: string
           ledger_id?: string | null
           quality?: string
-          batch_number?: string
+          batch_number?: string[]
           quantity?: number
           product_name?: string | null
           product_description?: string | null

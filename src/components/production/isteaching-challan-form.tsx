@@ -20,18 +20,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { LedgerSelectModal } from './ledger-select-modal'
 import { Loader2, Plus, Trash2, Upload, X } from 'lucide-react'
 import { Database, Json } from '@/types/database'
 import { useToast } from '@/hooks/use-toast'
 import Image from 'next/image'
+import { Checkbox } from '@/components/ui/checkbox'
 
 type Ledger = Database['public']['Tables']['ledgers']['Row']
 type Quality = { product_name: string }
 type BatchNumber = { batch_number: string, quality_details: Json }
 type IsteachingChallan = Database['public']['Tables']['isteaching_challans']['Insert']
 type Product = { product_name: string, product_qty: number | null }
-type WeaverChallan = { quality_details: Json }
+type WeaverChallan = { quality_details: Json, batch_number: string }
 
 const sizeSchema = z.object({
   size: z.string().min(1, 'Size is required'),
@@ -42,7 +49,7 @@ const isteachingChallanSchema = z.object({
   date: z.string().min(1, 'Date is required'),
   ledger_id: z.string().min(1, 'Ledger is required'),
   quality: z.string().min(1, 'Quality is required'),
-  batch_number: z.string().min(1, 'Batch number is required'),
+  batch_number: z.array(z.string()).min(1, 'At least one batch number is required'),
   quantity: z.number().min(1, 'Quantity must be at least 1'),
   product_name: z.string().optional(),
   product_description: z.string().optional(),
@@ -68,7 +75,7 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [selectedLedger, setSelectedLedger] = useState<Ledger | null>(null)
-  const [filteredBatchNumbers, setFilteredBatchNumbers] = useState<string[]>([])
+  const [filteredBatchNumbers, setFilteredBatchNumbers] = useState<{ batch_number: string, rate: number }[]>([])
   const [productImageFile, setProductImageFile] = useState<File | null>(null)
   const [productImagePreview, setProductImagePreview] = useState<string | null>(null)
   const [isAlertOpen, setIsAlertOpen] = useState(false)
@@ -86,6 +93,7 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
       product_size: [{ size: 'S', quantity: 0 }],
+      batch_number: [],
     },
   })
 
@@ -97,6 +105,7 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
   const selectedQuality = watch('quality')
   const productQty = watch('product_qty')
   const productSizes = watch('product_size')
+  const selectedBatchNumbers = watch('batch_number')
 
   useEffect(() => {
     if (selectedQuality) {
@@ -172,14 +181,16 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
 
   useEffect(() => {
     if (selectedQuality) {
-      type QualityDetail = { quality_name: string }
+      type QualityDetail = { quality_name: string, rate: number }
       const batches = batchNumbers
-        .filter(bn => {
-          if (!bn.quality_details) return false
+        .map(bn => {
+          if (!bn.quality_details) return null
           const details = Array.isArray(bn.quality_details) ? bn.quality_details : [bn.quality_details]
-          return (details as QualityDetail[]).some((d: QualityDetail) => d.quality_name === selectedQuality)
+          const qualityDetail = (details as QualityDetail[]).find(d => d.quality_name === selectedQuality)
+          if (!qualityDetail) return null
+          return { batch_number: bn.batch_number, rate: qualityDetail.rate }
         })
-        .map(bn => bn.batch_number)
+        .filter(Boolean) as { batch_number: string, rate: number }[]
       setFilteredBatchNumbers(batches)
     } else {
       setFilteredBatchNumbers([])
@@ -223,8 +234,26 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
         }
       }
 
+      const today = new Date()
+      const dateStr = today.toISOString().split('T')[0].replace(/-/g, '')
+      const challanPrefix = `SVH-CH-${dateStr}-`
+      const { data: lastChallan } = await supabase
+        .from('isteaching_challans')
+        .select('challan_no')
+        .like('challan_no', `${challanPrefix}%`)
+        .order('id', { ascending: false })
+        .limit(1)
+
+      let challanSuffix = '001'
+      if (lastChallan && lastChallan.length > 0) {
+        const lastNumber = lastChallan[0].challan_no.slice(-3)
+        challanSuffix = String(parseInt(lastNumber) + 1).padStart(3, '0')
+      }
+      const challanNumber = challanPrefix + challanSuffix
+
       const challanData: IsteachingChallan = {
         ...data,
+        challan_no: challanNumber,
         product_image: imageUrl,
       }
 
@@ -309,16 +338,30 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
 
           <div className="space-y-2">
             <Label htmlFor="batch_number">Select Batch Number *</Label>
-            <Select onValueChange={(value) => setValue('batch_number', value)} disabled={!selectedQuality}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a batch number" />
-              </SelectTrigger>
-              <SelectContent className='bg-white'>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-full justify-start">
+                  {selectedBatchNumbers.length > 0 ? `${selectedBatchNumbers.length} selected` : 'Select batch numbers'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-full">
                 {filteredBatchNumbers.map(bn => (
-                  <SelectItem key={bn} value={bn}>{bn}</SelectItem>
+                  <DropdownMenuItem key={bn.batch_number} onSelect={(e) => e.preventDefault()}>
+                    <Checkbox
+                      checked={selectedBatchNumbers.includes(bn.batch_number)}
+                      onCheckedChange={(checked) => {
+                        const current = selectedBatchNumbers || []
+                        const newSelection = checked
+                          ? [...current, bn.batch_number]
+                          : current.filter(b => b !== bn.batch_number)
+                        setValue('batch_number', newSelection)
+                      }}
+                    />
+                    <span className="ml-2">{bn.batch_number} ({bn.rate} mtr)</span>
+                  </DropdownMenuItem>
                 ))}
-              </SelectContent>
-            </Select>
+              </DropdownMenuContent>
+            </DropdownMenu>
             {errors.batch_number && <p className="text-sm text-red-600">{errors.batch_number.message}</p>}
           </div>
 

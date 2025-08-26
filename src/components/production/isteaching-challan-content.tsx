@@ -60,7 +60,7 @@ interface IsteachingChallanContentProps {
   batchNumbers: BatchNumber[]
   userRole: UserRole
   products: Product[]
-  weaverChallans: { quality_details: Json }[]
+  weaverChallans: { quality_details: Json, batch_number: string }[]
 }
 
 export function IsteachingChallanContent({ 
@@ -86,7 +86,7 @@ export function IsteachingChallanContent({
 
   const filteredChallans = challans.filter(challan => {
     const matchesSearch = !searchTerm || 
-      challan.batch_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      challan.batch_number.join(', ').toLowerCase().includes(searchTerm.toLowerCase()) ||
       challan.quality.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (challan.ledgers?.business_name && challan.ledgers.business_name.toLowerCase().includes(searchTerm.toLowerCase()))
 
@@ -312,6 +312,7 @@ export function IsteachingChallanContent({
                 <TableHead>Batch Number</TableHead>
                 <TableHead>Quantity</TableHead>
                 <TableHead>Product Name</TableHead>
+                <TableHead>Print</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -331,9 +332,14 @@ export function IsteachingChallanContent({
                     {challan.ledgers?.business_name || 'N/A'}
                   </TableCell>
                   <TableCell>{challan.quality}</TableCell>
-                  <TableCell>{challan.batch_number}</TableCell>
+                  <TableCell>{challan.batch_number.join(', ')}</TableCell>
                   <TableCell>{challan.quantity}</TableCell>
                   <TableCell>{challan.product_name}</TableCell>
+                  <TableCell>
+                    <Button variant="outline" size="icon" onClick={() => window.open(`/print/isteaching-challan/${challan.id}`, '_blank')}>
+                      <FileText className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

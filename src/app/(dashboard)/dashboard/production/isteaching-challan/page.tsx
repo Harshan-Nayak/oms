@@ -42,7 +42,7 @@ export default async function IsteachingChallanPage() {
   // Fetch qualities from weaver_challans
   const { data: weaverChallans } = await supabase
     .from('weaver_challans')
-    .select('quality_details')
+    .select('quality_details, batch_number')
 
   const qualities = weaverChallans
     ? [...new Set(

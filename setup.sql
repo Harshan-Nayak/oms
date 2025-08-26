@@ -113,10 +113,11 @@ CREATE TABLE public.ledger_logs (
 -- Create isteaching_challans table
 CREATE TABLE public.isteaching_challans (
   id SERIAL PRIMARY KEY,
+  challan_no TEXT UNIQUE NOT NULL,
   date DATE NOT NULL,
   ledger_id TEXT REFERENCES ledgers(ledger_id) ON DELETE SET NULL,
   quality TEXT NOT NULL,
-  batch_number TEXT NOT NULL,
+  batch_number TEXT[] NOT NULL,
   quantity DECIMAL(10,2) NOT NULL,
   product_name TEXT,
   product_description TEXT,

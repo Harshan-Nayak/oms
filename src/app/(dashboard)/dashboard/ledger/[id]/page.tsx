@@ -11,6 +11,7 @@ import Passbook from '@/components/ledger/passbook'
 import ChallanList from '@/components/ledger/challan-list'
 import ExpenseList from '@/components/ledger/expense-list'
 import PaymentVoucherList from '@/components/ledger/payment-voucher-list'
+import IsteachingChallanList from '@/components/ledger/isteaching-challan-list'
 import {
   Accordion,
   AccordionContent,
@@ -268,6 +269,12 @@ export default async function LedgerDetailPage({ params }: LedgerDetailPageProps
           <AccordionTrigger>Payment Vouchers</AccordionTrigger>
           <AccordionContent>
             <PaymentVoucherList ledgerId={ledger.ledger_id} />
+          </AccordionContent>
+        </AccordionItem>
+        <AccordionItem value="isteaching-challans">
+          <AccordionTrigger>Isteaching Challans</AccordionTrigger>
+          <AccordionContent>
+            <IsteachingChallanList ledgerId={ledger.ledger_id} />
           </AccordionContent>
         </AccordionItem>
       </Accordion>
