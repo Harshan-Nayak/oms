@@ -57,6 +57,9 @@ const isteachingChallanSchema = z.object({
   product_qty: z.number().min(0).optional(),
   product_color: z.string().optional(),
   product_size: z.array(sizeSchema).optional(),
+  transport_name: z.string().optional(),
+  lr_number: z.string().optional(),
+  transport_charge: z.number().min(0).optional(),
 })
 
 type IsteachingChallanFormData = z.infer<typeof isteachingChallanSchema>
@@ -255,6 +258,9 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
         ...data,
         challan_no: challanNumber,
         product_image: imageUrl,
+        transport_name: data.transport_name || null,
+        lr_number: data.lr_number || null,
+        transport_charge: data.transport_charge || null,
       }
 
       const { error: insertError } = await supabase
@@ -471,6 +477,44 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
           {productQty && productSizes && productSizes.reduce((sum, s) => sum + s.quantity, 0) > productQty && (
             <p className="text-sm text-red-600">Total size quantity exceeds product quantity.</p>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Transport Details */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Transport Details</CardTitle>
+          <CardDescription>Enter transport and logistics information (optional)</CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="transport_name">Transport Name</Label>
+            <Input
+              id="transport_name"
+              {...register('transport_name')}
+              placeholder="Enter transport company"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="lr_number">LR Number</Label>
+            <Input
+              id="lr_number"
+              {...register('lr_number')}
+              placeholder="Enter LR number"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="transport_charge">Transport Charge</Label>
+            <Input
+              id="transport_charge"
+              type="number"
+              step="0.01"
+              {...register('transport_charge', { valueAsNumber: true })}
+              placeholder="0.0"
+            />
+          </div>
         </CardContent>
       </Card>
 

@@ -125,6 +125,9 @@ export type Database = {
           product_qty: number | null
           product_color: string | null
           product_size: Json | null
+          transport_name: string | null
+          lr_number: string | null
+          transport_charge: number | null
           created_by: string | null
           created_at: string
           updated_at: string
@@ -144,6 +147,9 @@ export type Database = {
           product_qty?: number | null
           product_color?: string | null
           product_size?: Json | null
+          transport_name?: string | null
+          lr_number?: string | null
+          transport_charge?: number | null
           created_by?: string | null
           created_at?: string
           updated_at?: string
@@ -163,6 +169,9 @@ export type Database = {
           product_qty?: number | null
           product_color?: string | null
           product_size?: Json | null
+          transport_name?: string | null
+          lr_number?: string | null
+          transport_charge?: number | null
           created_by?: string | null
           created_at?: string
           updated_at?: string

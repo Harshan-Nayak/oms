@@ -122,10 +122,14 @@ export default async function IsteachingChallanDetailPage({ params }: Isteaching
               <p className="font-mono text-lg font-semibold text-blue-600">{isteachingChallan.batch_number}</p>
             </div>
             <div>
+              <label className="text-sm font-medium text-gray-700">Stitching Number</label>
+              <p className="font-mono text-lg font-semibold text-blue-600">{isteachingChallan.challan_no}</p>
+            </div>
+            <div>
               <label className="text-sm font-medium text-gray-700">Challan Date</label>
               <p className="flex items-center">
-                <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-                {formatDate(isteachingChallan.date)}
+                <Calendar className="h-4 w-4 mr-2 text-gray-40" />
+                {new Date(isteachingChallan.date).toLocaleDateString()}
               </p>
             </div>
             <div>
@@ -207,6 +211,37 @@ export default async function IsteachingChallanDetailPage({ params }: Isteaching
               )}
             </CardContent>
           </Card>
+
+          {(isteachingChallan.transport_name || isteachingChallan.lr_number || isteachingChallan.transport_charge) && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Factory className="h-5 w-5 mr-2" />
+                  Transport Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {isteachingChallan.transport_name && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Transport Name</label>
+                    <p className="text-gray-900">{isteachingChallan.transport_name}</p>
+                  </div>
+                )}
+                {isteachingChallan.lr_number && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">LR Number</label>
+                    <p className="text-gray-900">{isteachingChallan.lr_number}</p>
+                  </div>
+                )}
+                {isteachingChallan.transport_charge && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Transport Charge</label>
+                    <p className="text-gray-900">₹{isteachingChallan.transport_charge.toFixed(2)}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>

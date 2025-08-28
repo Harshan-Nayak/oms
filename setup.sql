@@ -126,6 +126,9 @@ CREATE TABLE public.isteaching_challans (
   product_qty INTEGER,
   product_color TEXT,
   product_size JSONB,
+  transport_name TEXT,
+  lr_number TEXT,
+  transport_charge DECIMAL(10,2),
   created_by UUID REFERENCES auth.users(id),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
