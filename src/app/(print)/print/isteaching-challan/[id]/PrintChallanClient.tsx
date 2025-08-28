@@ -59,7 +59,7 @@ CIRLCE,
             <p className="text-xs text-gray-500">Mobile: +91 96623 50960 | GST: 24CFIPB8013H1ZT</p>
           </div>
           <div className="text-right">
-            <h2 className="text-2xl font-semibold text-gray-700">ISTEACHING CHALLAN</h2>
+            <h2 className="text-2xl font-semibold text-gray-700">Stitching  CHALLAN</h2>
             <p className="text-xs text-gray-500">Challan No: <span className="font-medium text-gray-700">{isteachingChallan.challan_no}</span></p>
           </div>
         </header>

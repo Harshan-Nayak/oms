@@ -141,9 +141,9 @@ export function IsteachingChallanContent({
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Create Isteaching Challan</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Create Stitching  Challan</h1>
             <p className="text-gray-600 mt-1">
-              Create a new isteaching challan.
+              Create a new Stitching  challan.
             </p>
           </div>
           <Button 
@@ -174,9 +174,9 @@ export function IsteachingChallanContent({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Isteaching Challans</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Stitching  Challans</h1>
           <p className="text-gray-600 mt-1">
-            Manage isteaching challans ({totalCount} total challans)
+            Manage Stitching  challans ({totalCount} total challans)
           </p>
         </div>
         {canEdit && (

@@ -12,6 +12,7 @@ import ChallanList from '@/components/ledger/challan-list'
 import ExpenseList from '@/components/ledger/expense-list'
 import PaymentVoucherList from '@/components/ledger/payment-voucher-list'
 import IsteachingChallanList from '@/components/ledger/isteaching-challan-list'
+import LedgerSummary from '@/components/ledger/ledger-summary'
 import {
   Accordion,
   AccordionContent,
@@ -89,32 +90,37 @@ export default async function LedgerDetailPage({ params }: LedgerDetailPageProps
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Business Logo */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Building2 className="h-5 w-5 mr-2" />
-              Business Logo
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
-              {ledger.business_logo ? (
-                <Image
-                  src={ledger.business_logo}
-                  alt={ledger.business_name}
-                  width={200}
-                  height={200}
-                  className="rounded-lg object-cover w-full h-full"
-                />
-              ) : (
-                <div className="text-gray-400 text-center">
-                  <Building2 className="h-16 w-16 mx-auto mb-4" />
-                  <p>No logo available</p>
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Building2 className="h-5 w-5 mr-2" />
+                Business Logo
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
+                {ledger.business_logo ? (
+                  <Image
+                    src={ledger.business_logo}
+                    alt={ledger.business_name}
+                    width={200}
+                    height={200}
+                    className="rounded-lg object-cover w-full h-full"
+                  />
+                ) : (
+                  <div className="text-gray-400 text-center">
+                    <Building2 className="h-16 w-16 mx-auto mb-4" />
+                    <p>No logo available</p>
                 </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Ledger Summary */}
+          <LedgerSummary ledgerId={ledger.ledger_id} />
+        </div>
 
         {/* Business Information */}
         <div className="lg:col-span-2 space-y-6">
@@ -167,7 +173,7 @@ export default async function LedgerDetailPage({ params }: LedgerDetailPageProps
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <Mail className="h-4 w-4 text-gray-400" />
+                  <Mail className="h-4 w-4 text-gray-40" />
                   <div>
                     <label className="text-sm font-medium text-gray-700">Email</label>
                     <p className="text-gray-900">{ledger.email || 'Not provided'}</p>
@@ -272,7 +278,7 @@ export default async function LedgerDetailPage({ params }: LedgerDetailPageProps
           </AccordionContent>
         </AccordionItem>
         <AccordionItem value="isteaching-challans">
-          <AccordionTrigger>Isteaching Challans</AccordionTrigger>
+          <AccordionTrigger>Stitching  Challans</AccordionTrigger>
           <AccordionContent>
             <IsteachingChallanList ledgerId={ledger.ledger_id} />
           </AccordionContent>

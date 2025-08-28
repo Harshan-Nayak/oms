@@ -93,7 +93,7 @@ export default async function IsteachingChallanDetailPage({ params }: Isteaching
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Isteaching Challan Details</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Stitching  Challan Details</h1>
           </div>
         </div>
         <div className="flex items-center space-x-2">

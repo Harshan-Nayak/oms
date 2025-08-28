@@ -47,7 +47,7 @@ export default function IsteachingChallanList({ ledgerId }: IsteachingChallanLis
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Isteaching Challans</CardTitle>
+        <CardTitle>Stitching  Challans</CardTitle>
       </CardHeader>
       <CardContent>
         {loading ? (
