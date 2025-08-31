@@ -51,6 +51,7 @@ type Quality = { product_name: string }
 type BatchNumber = { batch_number: string, quality_details: Json }
 type UserRole = Database['public']['Tables']['profiles']['Row']['user_role']
 type Product = { product_name: string, product_qty: number | null }
+type WeaverChallan = { quality_details: Json, batch_number: string }
 
 interface IsteachingChallanContentProps {
   challans: IsteachingChallan[]
@@ -60,18 +61,20 @@ interface IsteachingChallanContentProps {
   batchNumbers: BatchNumber[]
   userRole: UserRole
   products: Product[]
-  weaverChallans: { quality_details: Json, batch_number: string }[]
+  weaverChallans: WeaverChallan[]
+  shortingEntries: { quality_name: string, shorting_qty: number, batch_number: string }[]
 }
 
 export function IsteachingChallanContent({ 
   challans, 
   totalCount, 
   ledgers, 
-  qualities,
-  batchNumbers,
+  qualities, 
+  batchNumbers, 
   userRole,
   products,
-  weaverChallans
+  weaverChallans,
+  shortingEntries
 }: IsteachingChallanContentProps) {
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState('')
@@ -160,6 +163,8 @@ export function IsteachingChallanContent({
           batchNumbers={batchNumbers}
           products={products}
           weaverChallans={weaverChallans}
+          shortingEntries={shortingEntries}
+          isteachingChallans={challans}
           onSuccess={() => {
             setShowCreateForm(false)
             router.refresh()

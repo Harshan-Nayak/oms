@@ -502,6 +502,64 @@ export type Database = {
           },
         ]
       }
+      shorting_entries: {
+        Row: {
+          id: number
+          entry_date: string
+          ledger_id: string | null
+          weaver_challan_id: number | null
+          quality_name: string | null
+          shorting_qty: number
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          entry_date?: string
+          ledger_id?: string | null
+          weaver_challan_id?: number | null
+          quality_name?: string | null
+          shorting_qty: number
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          entry_date?: string
+          ledger_id?: string | null
+          weaver_challan_id?: number | null
+          quality_name?: string | null
+          shorting_qty?: number
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shorting_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shorting_entries_ledger_id_fkey"
+            columns: ["ledger_id"]
+            isOneToOne: false
+            referencedRelation: "ledgers"
+            referencedColumns: ["ledger_id"]
+          },
+          {
+            foreignKeyName: "shorting_entries_weaver_challan_id_fkey"
+            columns: ["weaver_challan_id"]
+            isOneToOne: true
+            referencedRelation: "weaver_challans"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       weaver_challans: {
         Row: {
           batch_number: string

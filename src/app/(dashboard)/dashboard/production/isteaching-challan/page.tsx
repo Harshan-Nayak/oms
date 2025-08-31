@@ -2,6 +2,16 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { IsteachingChallanContent } from '@/components/production/isteaching-challan-content'
 
+// This type accurately reflects the data returned by the Supabase query,
+// acknowledging that weaver_challans is a single object, not an array.
+type ShortingEntryWithChallan = {
+  quality_name: string | null
+  shorting_qty: number
+  weaver_challans: {
+    batch_number: string
+  } | null
+}
+
 export default async function IsteachingChallanPage() {
   const supabase = createServerSupabaseClient()
   
@@ -62,6 +72,21 @@ export default async function IsteachingChallanPage() {
     .from('weaver_challans')
     .select('batch_number, quality_details')
 
+  // Fetch shorting entries
+  const { data: shortingEntries } = await supabase
+    .from('shorting_entries')
+    .select('quality_name, shorting_qty, weaver_challans ( batch_number )')
+
+  // Cast the fetched data to our specific type, then filter out any entries
+  // that are missing the required data, ensuring type safety for the component.
+  const formattedShortingEntries = (shortingEntries as ShortingEntryWithChallan[] | null)
+    ?.filter(e => e.quality_name && e.weaver_challans?.batch_number)
+    .map(e => ({
+      quality_name: e.quality_name!,
+      shorting_qty: e.shorting_qty,
+      batch_number: e.weaver_challans!.batch_number,
+    })) || []
+
   return (
     <IsteachingChallanContent 
       challans={challans || []} 
@@ -72,6 +97,7 @@ export default async function IsteachingChallanPage() {
       userRole={profile.user_role}
       products={products || []}
       weaverChallans={weaverChallans || []}
+      shortingEntries={formattedShortingEntries}
     />
   )
 }

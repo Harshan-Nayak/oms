@@ -70,10 +70,12 @@ interface IsteachingChallanFormProps {
   batchNumbers: BatchNumber[]
   products: Product[]
   weaverChallans: WeaverChallan[]
+  shortingEntries: { quality_name: string, shorting_qty: number, batch_number: string }[]
+  isteachingChallans: IsteachingChallan[]
   onSuccess: () => void
 }
 
-export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, products, weaverChallans, onSuccess }: IsteachingChallanFormProps) {
+export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, products, weaverChallans, shortingEntries, isteachingChallans, onSuccess }: IsteachingChallanFormProps) {
   const { showToast } = useToast()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -118,11 +120,20 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
         const qualityDetail = (details as { quality_name: string, rate: number }[]).find(d => d.quality_name === selectedQuality)
         return sum + (qualityDetail?.rate || 0)
       }, 0)
-      setMaxQuantity(totalQty)
+
+      const shortingQty = shortingEntries
+        .filter(e => e.quality_name === selectedQuality)
+        .reduce((sum, entry) => sum + entry.shorting_qty, 0)
+
+      const stitchedQty = isteachingChallans
+        .filter(c => c.quality === selectedQuality)
+        .reduce((sum, challan) => sum + challan.quantity, 0)
+
+      setMaxQuantity(totalQty - shortingQty - stitchedQty)
     } else {
       setMaxQuantity(null)
     }
-  }, [selectedQuality, weaverChallans])
+  }, [selectedQuality, weaverChallans, shortingEntries, isteachingChallans])
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -184,21 +195,14 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
 
   useEffect(() => {
     if (selectedQuality) {
-      type QualityDetail = { quality_name: string, rate: number }
-      const batches = batchNumbers
-        .map(bn => {
-          if (!bn.quality_details) return null
-          const details = Array.isArray(bn.quality_details) ? bn.quality_details : [bn.quality_details]
-          const qualityDetail = (details as QualityDetail[]).find(d => d.quality_name === selectedQuality)
-          if (!qualityDetail) return null
-          return { batch_number: bn.batch_number, rate: qualityDetail.rate }
-        })
-        .filter(Boolean) as { batch_number: string, rate: number }[]
+      const batches = shortingEntries
+        .filter(e => e.quality_name === selectedQuality)
+        .map(e => ({ batch_number: e.batch_number, rate: e.shorting_qty }))
       setFilteredBatchNumbers(batches)
     } else {
       setFilteredBatchNumbers([])
     }
-  }, [selectedQuality, batchNumbers])
+  }, [selectedQuality, shortingEntries])
 
   const handleLedgerSelect = (ledgerId: string) => {
     const ledger = ledgers.find(l => l.ledger_id === ledgerId)
@@ -334,8 +338,8 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
                 <SelectValue placeholder="Select a quality" />
               </SelectTrigger>
               <SelectContent className='bg-white'>
-                {qualities.map(q => (
-                  <SelectItem key={q.product_name} value={q.product_name}>{q.product_name}</SelectItem>
+                {shortingEntries.map(q => (
+                  <SelectItem key={q.quality_name} value={q.quality_name}>{q.quality_name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
