@@ -28,7 +28,7 @@ const qualityDetailSchema = z.object({
 })
 
 const takaDetailSchema = z.object({
-  taka_number: z.string().min(1, 'Taka number is required'),
+  taka_number: z.string().optional(),
   meters: z.number().min(0.01, 'Meters must be greater than 0'),
 });
 

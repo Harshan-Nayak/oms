@@ -29,6 +29,8 @@ export default function PrintChallanClient({ weaverChallan }: { weaverChallan: W
   }
 
   const takaDetails = parseTakaDetails(weaverChallan.taka_details)
+  const showTakaNumberColumn = takaDetails.some((taka: { taka_number: string; }) => taka.taka_number && taka.taka_number.trim() !== '');
+
   const qualityDetail = Array.isArray(weaverChallan.quality_details) && weaverChallan.quality_details.length > 0 && isQualityDetail(weaverChallan.quality_details[0])
     ? weaverChallan.quality_details[0]
     : null;
@@ -123,7 +125,7 @@ CIRLCE,
             <thead className="bg-gray-50">
               <tr>
                 <th className="p-2 text-left font-semibold text-gray-600">SR. NO.</th>
-                <th className="p-2 text-left font-semibold text-gray-600">TAKA NO.</th>
+                {showTakaNumberColumn && <th className="p-2 text-left font-semibold text-gray-600">TAKA NO.</th>}
                 <th className="p-2 text-right font-semibold text-gray-600">METERS</th>
               </tr>
             </thead>
@@ -131,7 +133,7 @@ CIRLCE,
               {takaDetails.map((taka: { taka_number: string; meters: number }, index: number) => (
                 <tr key={index} className="border-b">
                   <td className="p-2">{index + 1}</td>
-                  <td className="p-2">{taka.taka_number}</td>
+                  {showTakaNumberColumn && <td className="p-2">{taka.taka_number}</td>}
                   <td className="p-2 text-right">{taka.meters.toFixed(2)}</td>
                 </tr>
               ))}
