@@ -27,13 +27,9 @@ export default async function WeaverChallanPage() {
     .from('weaver_challans')
     .select(`
       *,
-      ledgers (
+      ledgers:ledgers!weaver_challans_ledger_id_fkey (
         business_name,
-        contact_person_name,
-        mobile_number,
-        address,
-        city,
-        state
+        contact_person_name
       )
     `, { count: 'exact' })
     .order('created_at', { ascending: false })

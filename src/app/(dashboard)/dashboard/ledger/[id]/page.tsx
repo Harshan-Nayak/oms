@@ -54,6 +54,12 @@ export default async function LedgerDetailPage({ params }: LedgerDetailPageProps
     .eq('ledger_id', id)
     .single()
 
+  // Fetch weaver challans where this ledger is a vendor
+  const { data: vendorChallans } = await supabase
+    .from('weaver_challans')
+    .select('*')
+    .eq('vendor_ledger_id', id)
+
   if (error || !ledger) {
     notFound()
   }
@@ -252,6 +258,26 @@ export default async function LedgerDetailPage({ params }: LedgerDetailPageProps
           </Card>
         </div>
       </div>
+      <hr className="my-6" />
+
+      {vendorChallans && vendorChallans.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Vendor Ledger Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Accordion type="multiple" className="w-full">
+              <AccordionItem value="vendor-passbook">
+                <AccordionTrigger>Vendor Passbook</AccordionTrigger>
+                <AccordionContent>
+                  <Passbook ledgerId={ledger.ledger_id} vendorChallans={vendorChallans} />
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </CardContent>
+        </Card>
+      )}
+
       <Accordion type="multiple" className="w-full">
         <AccordionItem value="passbook">
           <AccordionTrigger>Passbook</AccordionTrigger>

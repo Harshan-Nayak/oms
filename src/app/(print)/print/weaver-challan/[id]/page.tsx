@@ -21,7 +21,7 @@ async function getWeaverChallan(id: string) {
     .from('weaver_challans')
     .select(`
       *,
-      ledgers (
+      ledgers:ledgers!weaver_challans_ledger_id_fkey (
         business_name,
         contact_person_name,
         mobile_number,

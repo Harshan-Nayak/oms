@@ -26,6 +26,7 @@ import { Tables, Json } from '@/types/supabase'
 
 type WeaverChallan = Tables<'weaver_challans'> & {
   ledgers: Tables<'ledgers'> | null
+  vendor_ledgers: Tables<'ledgers'> | null
 };
 
 type QualityDetail = {
@@ -67,7 +68,17 @@ export default async function WeaverChallanDetailPage({ params }: WeaverChallanD
     .from('weaver_challans')
     .select(`
       *,
-      ledgers (
+      ledgers:ledgers!weaver_challans_ledger_id_fkey (
+        business_name,
+        contact_person_name,
+        mobile_number,
+        email,
+        address,
+        city,
+        state,
+        gst_number
+      ),
+      vendor_ledgers:ledgers!weaver_challans_vendor_ledger_id_fkey (
         business_name,
         contact_person_name,
         mobile_number,
@@ -249,6 +260,41 @@ export default async function WeaverChallanDetailPage({ params }: WeaverChallanD
               )}
             </CardContent>
           </Card>
+
+          {/* Vendor Information */}
+          {weaverChallan.vendor_ledger_id && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Building2 className="h-5 w-5 mr-2" />
+                  Vendor Information
+                </CardTitle>
+                <CardDescription>Vendor details and invoice information</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {weaverChallan.vendor_ledgers && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-700">Business Name</label>
+                      <p className="text-gray-900">{weaverChallan.vendor_ledgers.business_name}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-700">Contact Person</label>
+                      <p className="text-gray-900">{weaverChallan.vendor_ledgers.contact_person_name || 'Not specified'}</p>
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Invoice/Challan Number (Vendor)</label>
+                  <p className="font-mono text-sm">{weaverChallan.vendor_invoice_number || 'Not provided'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Amount</label>
+                  <p className="text-lg font-semibold">₹{weaverChallan.vendor_amount?.toLocaleString() || '0.00'}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Production Details */}
           <Card>

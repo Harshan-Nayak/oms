@@ -522,6 +522,9 @@ export type Database = {
           transport_name: string | null
           updated_at: string
           width_inch: number | null
+          vendor_ledger_id: string | null
+          vendor_invoice_number: string | null
+          vendor_amount: number | null
         }
         Insert: {
           batch_number: string
@@ -542,6 +545,9 @@ export type Database = {
           transport_name?: string | null
           updated_at?: string
           width_inch?: number | null
+          vendor_ledger_id?: string | null
+          vendor_invoice_number?: string | null
+          vendor_amount?: number | null
         }
         Update: {
           batch_number?: string
@@ -562,6 +568,9 @@ export type Database = {
           transport_name?: string | null
           updated_at?: string
           width_inch?: number | null
+          vendor_ledger_id?: string | null
+          vendor_invoice_number?: string | null
+          vendor_amount?: number | null
         }
         Relationships: [
           {
@@ -574,6 +583,13 @@ export type Database = {
           {
             foreignKeyName: "weaver_challans_ledger_id_fkey"
             columns: ["ledger_id"]
+            isOneToOne: false
+            referencedRelation: "ledgers"
+            referencedColumns: ["ledger_id"]
+          },
+          {
+            foreignKeyName: "weaver_challans_vendor_ledger_id_fkey"
+            columns: ["vendor_ledger_id"]
             isOneToOne: false
             referencedRelation: "ledgers"
             referencedColumns: ["ledger_id"]

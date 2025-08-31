@@ -45,11 +45,7 @@ type WeaverChallan = Database['public']['Tables']['weaver_challans']['Row'] & {
   ledgers?: {
     business_name: string
     contact_person_name: string | null
-    mobile_number: string | null
-    address: string | null
-    city: string | null
-    state: string | null
-  }
+  } | null
   delivery_at?: string | null
 }
 

@@ -78,6 +78,9 @@ CREATE TABLE public.weaver_challans (
   transport_charge DECIMAL(10,2),
   quality_details JSONB,
   taka_details JSONB,
+  vendor_ledger_id TEXT REFERENCES ledgers(ledger_id),
+  vendor_invoice_number TEXT,
+  vendor_amount NUMERIC,
   created_by UUID REFERENCES auth.users(id),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

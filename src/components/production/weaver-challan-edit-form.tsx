@@ -25,8 +25,8 @@ type Ledger = Database['public']['Tables']['ledgers']['Row']
 
 const qualityDetailSchema = z.object({
   quality_name: z.string().min(1, 'Quality name is required'),
-  rate: z.number().int('Quantity must be a whole number').min(0, 'Quantity must be non-negative'),
-  grey_mtr: z.number().int('Rate must be a whole number').min(0, 'Rate must be non-negative'),
+  rate: z.number().min(0, 'Quantity must be non-negative'),
+  grey_mtr: z.number().min(0, 'Rate must be non-negative'),
 })
 
 const takaDetailSchema = z.object({
@@ -46,6 +46,9 @@ const weaverChallanEditSchema = z.object({
   transport_charge: z.number().optional(),
   quality_details: z.array(qualityDetailSchema).min(1, 'At least one quality detail is required'),
   taka_details: z.array(takaDetailSchema).optional(),
+  vendor_ledger_id: z.string().optional(),
+  vendor_invoice_number: z.string().optional(),
+  vendor_amount: z.number().optional(),
 })
 
 type WeaverChallanEditFormData = z.infer<typeof weaverChallanEditSchema>
@@ -63,6 +66,9 @@ export function WeaverChallanEditForm({ weaverChallan, ledgers, userId, userName
   const [error, setError] = useState('')
   const [selectedLedger, setSelectedLedger] = useState<Ledger | null>(
     ledgers.find(l => l.ledger_id === weaverChallan.ledger_id) || null
+  )
+  const [selectedVendorLedger, setSelectedVendorLedger] = useState<Ledger | null>(
+    ledgers.find(l => l.ledger_id === weaverChallan.vendor_ledger_id) || null
   )
 
   const parseDetails = (details: Json | null) => {
@@ -95,6 +101,9 @@ export function WeaverChallanEditForm({ weaverChallan, ledgers, userId, userName
       transport_charge: weaverChallan.transport_charge ? Number(weaverChallan.transport_charge) : undefined,
       quality_details: parseDetails(weaverChallan.quality_details),
       taka_details: parseDetails(weaverChallan.taka_details),
+      vendor_ledger_id: weaverChallan.vendor_ledger_id || '',
+      vendor_invoice_number: weaverChallan.vendor_invoice_number || '',
+      vendor_amount: weaverChallan.vendor_amount ? Number(weaverChallan.vendor_amount) : undefined,
     },
   })
 
@@ -124,6 +133,17 @@ export function WeaverChallanEditForm({ weaverChallan, ledgers, userId, userName
     } else {
       setSelectedLedger(null)
       setValue('ledger_id', '')
+    }
+  }
+
+  const handleVendorLedgerSelect = (ledgerId: string) => {
+    if (ledgerId && ledgerId !== 'none') {
+      const ledger = ledgers.find(l => l.ledger_id === ledgerId)
+      setSelectedVendorLedger(ledger || null)
+      setValue('vendor_ledger_id', ledgerId)
+    } else {
+      setSelectedVendorLedger(null)
+      setValue('vendor_ledger_id', '')
     }
   }
 
@@ -187,6 +207,35 @@ export function WeaverChallanEditForm({ weaverChallan, ledgers, userId, userName
             </LedgerSelectModal>
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="vendor_ledger_id">Select Vendor Ledger</Label>
+            <LedgerSelectModal ledgers={ledgers} onLedgerSelect={handleVendorLedgerSelect}>
+              <Button type="button" variant="outline" className="w-full justify-start">
+                {selectedVendorLedger ? selectedVendorLedger.business_name : '-- Select Vendor Ledger --'}
+              </Button>
+            </LedgerSelectModal>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="vendor_invoice_number">Invoice/Challan Number (Vendor)</Label>
+              <Input
+                id="vendor_invoice_number"
+                {...register('vendor_invoice_number')}
+                placeholder="Enter invoice/challan number"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="vendor_amount">Amount</Label>
+              <Input
+                id="vendor_amount"
+                type="number"
+                step="0.01"
+                {...register('vendor_amount', { valueAsNumber: true })}
+                placeholder="0.00"
+              />
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -225,8 +274,8 @@ export function WeaverChallanEditForm({ weaverChallan, ledgers, userId, userName
                   <SelectItem value="Satin">Satin</SelectItem>
                 </SelectContent>
               </Select>
-              <Input type="number" {...register(`quality_details.${index}.rate`, { valueAsNumber: true })} placeholder="Rate" />
-              <Input type="number" {...register(`quality_details.${index}.grey_mtr`, { valueAsNumber: true, onChange: calculateTotalGreyMtr })} placeholder="Grey Mtr" />
+              <Input type="number" step="0.01" {...register(`quality_details.${index}.rate`, { valueAsNumber: true })} placeholder="Rate" />
+              <Input type="number" step="0.01" {...register(`quality_details.${index}.grey_mtr`, { valueAsNumber: true, onChange: calculateTotalGreyMtr })} placeholder="Grey Mtr" />
               <Button type="button" variant="destructive" onClick={() => remove(index)}>
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -291,7 +340,7 @@ export function WeaverChallanEditForm({ weaverChallan, ledgers, userId, userName
           {takaFields.map((field, index) => (
             <div key={field.id} className="flex items-center space-x-2 mb-2">
               <Input {...register(`taka_details.${index}.taka_number`)} placeholder="Taka Number" />
-              <Input type="number" {...register(`taka_details.${index}.meters`, { valueAsNumber: true })} placeholder="Meters" />
+              <Input type="number" step="0.01" {...register(`taka_details.${index}.meters`, { valueAsNumber: true })} placeholder="Meters" />
               <Button type="button" variant="destructive" onClick={() => removeTaka(index)}>
                 <Trash2 className="h-4 w-4" />
               </Button>

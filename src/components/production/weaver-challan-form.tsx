@@ -44,6 +44,9 @@ const weaverChallanSchema = z.object({
   transport_charge: z.number().min(0).optional(),
   quality_details: z.array(qualityDetailSchema).min(1, 'At least one quality detail is required'),
   taka_details: z.array(takaDetailSchema).optional(),
+  vendor_ledger_id: z.string().optional(),
+  vendor_invoice_number: z.string().optional(),
+  vendor_amount: z.number().min(0).optional(),
 })
 
 type WeaverChallanFormData = z.infer<typeof weaverChallanSchema>
@@ -68,6 +71,7 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [selectedLedger, setSelectedLedger] = useState<Ledger | null>(null)
+  const [selectedVendorLedger, setSelectedVendorLedger] = useState<Ledger | null>(null)
 
   const {
     register,
@@ -129,6 +133,12 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
     const ledger = ledgers.find(l => l.ledger_id === ledgerId)
     setSelectedLedger(ledger || null)
     setValue('ledger_id', ledgerId)
+  }
+
+  const handleVendorLedgerSelect = (ledgerId: string) => {
+    const ledger = ledgers.find(l => l.ledger_id === ledgerId)
+    setSelectedVendorLedger(ledger || null)
+    setValue('vendor_ledger_id', ledgerId)
   }
 
   const generateNumbers = async () => {
@@ -203,6 +213,9 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
         transport_charge: data.transport_charge || null,
         quality_details: data.quality_details,
         created_by: userId,
+        vendor_ledger_id: data.vendor_ledger_id || null,
+        vendor_invoice_number: data.vendor_invoice_number || null,
+        vendor_amount: data.vendor_amount || null,
       }
 
       const { error: insertError } = await supabase
@@ -287,6 +300,36 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
             {errors.ledger_id && (
               <p className="text-sm text-red-600">{errors.ledger_id.message}</p>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="vendor_ledger_id">Select Vendor Ledger</Label>
+            <LedgerSelectModal ledgers={ledgers} onLedgerSelect={handleVendorLedgerSelect}>
+              <Button type="button" variant="outline" className="w-full justify-start">
+                {selectedVendorLedger ? selectedVendorLedger.business_name : '-- Select Vendor Ledger --'}
+              </Button>
+            </LedgerSelectModal>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="vendor_invoice_number">Invoice/Challan Number (Vendor)</Label>
+              <Input
+                id="vendor_invoice_number"
+                {...register('vendor_invoice_number')}
+                placeholder="Enter invoice/challan number"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="vendor_amount">Amount</Label>
+              <Input
+                id="vendor_amount"
+                type="number"
+                step="0.01"
+                {...register('vendor_amount', { valueAsNumber: true })}
+                placeholder="0.00"
+              />
+            </div>
           </div>
 
           {selectedLedger && (

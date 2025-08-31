@@ -7,9 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { formatDate } from '@/lib/utils'
+import { Database } from '@/types/database'
+
+type WeaverChallan = Database['public']['Tables']['weaver_challans']['Row']
 
 interface PassbookProps {
-  ledgerId: string
+  ledgerId: string;
+  vendorChallans?: WeaverChallan[];
 }
 
 interface Transaction {
@@ -21,7 +25,7 @@ interface Transaction {
   balance: number;
 }
 
-export default function Passbook({ ledgerId }: PassbookProps) {
+export default function Passbook({ ledgerId, vendorChallans }: PassbookProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -29,74 +33,90 @@ export default function Passbook({ ledgerId }: PassbookProps) {
   const supabase = createClientComponentClient();
 
   useEffect(() => {
-    async function fetchData() {
-      const { data: challans, error: challanError } = await supabase
-        .from('weaver_challans')
-        .select('challan_no, challan_date, total_grey_mtr, quality_details')
-        .eq('ledger_id', ledgerId);
+    async function processTransactions() {
+      setLoading(true);
+      let allTransactions: Omit<Transaction, 'balance'>[] = [];
 
-      const { data: paymentVouchers, error: paymentVoucherError } = await supabase
-        .from('payment_vouchers')
-        .select('id, date, payment_for, payment_type, amount')
-        .eq('ledger_id', ledgerId);
-
-      if (challanError || paymentVoucherError) {
-        console.error('Error fetching data:', challanError || paymentVoucherError);
-      } else {
-        const challanTransactions = (challans || []).map(c => ({
-          date: c.challan_date,
-          detail: 'Weaver Challan',
-          remark: c.challan_no,
-          credit: c.total_grey_mtr * (c.quality_details?.[0]?.rate || 0),
-          debit: 0,
+      if (vendorChallans) {
+        // This is a vendor passbook, only use the provided challans
+        allTransactions = (vendorChallans || []).map(vc => ({
+          date: vc.challan_date,
+          detail: 'Vendor Challan',
+          remark: vc.vendor_invoice_number || vc.challan_no,
+          credit: 0,
+          debit: vc.vendor_amount || 0,
         }));
+      } else {
+        // This is a regular passbook, fetch all related transactions
+        const { data: challans, error: challanError } = await supabase
+          .from('weaver_challans')
+          .select('challan_no, challan_date, total_grey_mtr, quality_details')
+          .eq('ledger_id', ledgerId);
 
-        const sortedVouchers = [...(paymentVouchers || [])].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-        let creditCounter = 1;
-        let debitCounter = 1;
-        const voucherSequenceMap = new Map<number, number>();
-        sortedVouchers.forEach(voucher => {
-          if (voucher.payment_type === 'Credit') {
-            voucherSequenceMap.set(voucher.id, creditCounter++);
-          } else {
-            voucherSequenceMap.set(voucher.id, debitCounter++);
-          }
-        });
+        const { data: paymentVouchers, error: paymentVoucherError } = await supabase
+          .from('payment_vouchers')
+          .select('id, date, payment_for, payment_type, amount')
+          .eq('ledger_id', ledgerId);
 
-        const paymentVoucherTransactions = (paymentVouchers || []).map(pv => {
-          const date = new Date(pv.date);
-          const year = date.getFullYear();
-          const month = (date.getMonth() + 1).toString().padStart(2, '0');
-          const sequenceId = voucherSequenceMap.get(pv.id) || 0;
-          const paddedId = sequenceId.toString().padStart(3, '0');
-          const type = pv.payment_type === 'Credit' ? 'C' : 'D';
-          const remark = `VCH-${type}-${year}${month}${paddedId}`;
+        if (challanError || paymentVoucherError) {
+          console.error('Error fetching data:', challanError || paymentVoucherError);
+        } else {
+          const challanTransactions = (challans || []).map(c => ({
+            date: c.challan_date,
+            detail: 'Weaver Challan',
+            remark: c.challan_no,
+            credit: c.total_grey_mtr * (c.quality_details?.[0]?.rate || 0),
+            debit: 0,
+          }));
 
-          return {
-            date: pv.date,
-            detail: pv.payment_for,
-            remark: remark,
-            credit: pv.payment_type === 'Credit' ? pv.amount : 0,
-            debit: pv.payment_type === 'Debit' ? pv.amount : 0,
-          };
-        });
+          const sortedVouchers = [...(paymentVouchers || [])].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+          let creditCounter = 1;
+          let debitCounter = 1;
+          const voucherSequenceMap = new Map<number, number>();
+          sortedVouchers.forEach(voucher => {
+            if (voucher.payment_type === 'Credit') {
+              voucherSequenceMap.set(voucher.id, creditCounter++);
+            } else {
+              voucherSequenceMap.set(voucher.id, debitCounter++);
+            }
+          });
 
-        const allTransactions = [...challanTransactions, ...paymentVoucherTransactions]
-          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-        
-        let runningBalance = 0;
-        const transactionsWithBalance = allTransactions.map(tx => {
-          runningBalance += tx.credit - tx.debit;
-          return { ...tx, balance: runningBalance };
-        });
+          const paymentVoucherTransactions = (paymentVouchers || []).map(pv => {
+            const date = new Date(pv.date);
+            const year = date.getFullYear();
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const sequenceId = voucherSequenceMap.get(pv.id) || 0;
+            const paddedId = sequenceId.toString().padStart(3, '0');
+            const type = pv.payment_type === 'Credit' ? 'C' : 'D';
+            const remark = `VCH-${type}-${year}${month}${paddedId}`;
 
-        setTransactions(transactionsWithBalance.reverse());
+            return {
+              date: pv.date,
+              detail: pv.payment_for,
+              remark: remark,
+              credit: pv.payment_type === 'Credit' ? pv.amount : 0,
+              debit: pv.payment_type === 'Debit' ? pv.amount : 0,
+            };
+          });
+          allTransactions = [...challanTransactions, ...paymentVoucherTransactions];
+        }
       }
+
+      const sortedTransactions = allTransactions
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      
+      let runningBalance = 0;
+      const transactionsWithBalance = sortedTransactions.map(tx => {
+        runningBalance += tx.credit - tx.debit;
+        return { ...tx, balance: runningBalance };
+      });
+
+      setTransactions(transactionsWithBalance.reverse());
       setLoading(false);
     }
 
-    fetchData();
-  }, [ledgerId, supabase]);
+    processTransactions();
+  }, [ledgerId, vendorChallans, supabase]);
 
   const indexOfLastTransaction = currentPage * transactionsPerPage;
   const indexOfFirstTransaction = indexOfLastTransaction - transactionsPerPage;
