@@ -89,6 +89,7 @@ export function IsteachingChallanContent({
 
   const filteredChallans = challans.filter(challan => {
     const matchesSearch = !searchTerm || 
+      challan.challan_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
       challan.batch_number.join(', ').toLowerCase().includes(searchTerm.toLowerCase()) ||
       challan.quality.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (challan.ledgers?.business_name && challan.ledgers.business_name.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -311,6 +312,7 @@ export function IsteachingChallanContent({
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Challan Number</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Ledger</TableHead>
                 <TableHead>Quality</TableHead>
@@ -324,6 +326,7 @@ export function IsteachingChallanContent({
             <TableBody>
               {filteredChallans.map((challan) => (
                 <TableRow key={challan.id}>
+                  <TableCell>{challan.challan_no}</TableCell>
                   <TableCell>
                     <div className="flex items-center text-sm">
                       <Calendar className="h-3 w-3 mr-1" />

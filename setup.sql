@@ -56,6 +56,7 @@ CREATE TABLE public.ledgers (
   country TEXT,
   zip_code TEXT,
   gst_number TEXT,
+  pan_number TEXT,
   created_by UUID REFERENCES auth.users(id),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -134,7 +135,12 @@ CREATE TABLE public.isteaching_challans (
   transport_charge DECIMAL(10,2),
   created_by UUID REFERENCES auth.users(id),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  cloth_type TEXT[],
+  top_qty NUMERIC,
+  top_pcs_qty NUMERIC,
+  bottom_qty NUMERIC,
+  bottom_pcs_qty NUMERIC
 );
 
 -- Create isteaching_challan_logs table

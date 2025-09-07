@@ -169,6 +169,72 @@ export default async function IsteachingChallanDetailPage({ params }: Isteaching
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Package className="h-5 w-5 mr-2" />
+                Cloth Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700">Cloth Type</label>
+                <p className="text-gray-900">{isteachingChallan.cloth_type?.join(', ') || 'N/A'}</p>
+              </div>
+              {isteachingChallan.cloth_type?.includes('TOP') && (
+                <>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Top Qty (mtr)</label>
+                    <p className="text-gray-900">{isteachingChallan.top_qty || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">1pcs Qty (mtr)</label>
+                    <p className="text-gray-900">{isteachingChallan.top_pcs_qty || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Top Pcs Created</label>
+                    <p className="text-lg font-semibold">
+                      {isteachingChallan.top_qty && isteachingChallan.top_pcs_qty
+                        ? Math.floor(isteachingChallan.top_qty / isteachingChallan.top_pcs_qty)
+                        : 0}
+                    </p>
+                  </div>
+                </>
+              )}
+              {isteachingChallan.cloth_type?.includes('BOTTOM') && (
+                <>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Bottom Qty (mtr)</label>
+                    <p className="text-gray-900">{isteachingChallan.bottom_qty || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">1pcs Qty (mtr)</label>
+                    <p className="text-gray-900">{isteachingChallan.bottom_pcs_qty || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Bottom Pcs Created</label>
+                    <p className="text-lg font-semibold">
+                      {isteachingChallan.bottom_qty && isteachingChallan.bottom_pcs_qty
+                        ? Math.floor(isteachingChallan.bottom_qty / isteachingChallan.bottom_pcs_qty)
+                        : 0}
+                    </p>
+                  </div>
+                </>
+              )}
+              <div>
+                <label className="text-sm font-medium text-gray-700">Total Product QTY</label>
+                <p className="text-lg font-semibold">
+                  {(isteachingChallan.top_qty && isteachingChallan.top_pcs_qty
+                    ? Math.floor(isteachingChallan.top_qty / isteachingChallan.top_pcs_qty)
+                    : 0) +
+                    (isteachingChallan.bottom_qty && isteachingChallan.bottom_pcs_qty
+                      ? Math.floor(isteachingChallan.bottom_qty / isteachingChallan.bottom_pcs_qty)
+                      : 0)}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Package className="h-5 w-5 mr-2" />
                 Product Details
               </CardTitle>
             </CardHeader>

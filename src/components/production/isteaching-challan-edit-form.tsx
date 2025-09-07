@@ -59,6 +59,11 @@ const isteachingChallanSchema = z.object({
   transport_name: z.string().optional().nullable(),
   lr_number: z.string().optional().nullable(),
   transport_charge: z.number().min(0).optional().nullable(),
+  cloth_type: z.array(z.string()).optional(),
+  top_qty: z.number().min(0).optional().nullable(),
+  top_pcs_qty: z.number().min(0).optional().nullable(),
+  bottom_qty: z.number().min(0).optional().nullable(),
+  bottom_pcs_qty: z.number().min(0).optional().nullable(),
 })
 
 type IsteachingChallanFormData = z.infer<typeof isteachingChallanSchema>
@@ -94,6 +99,7 @@ export function IsteachingChallanEditForm({ isteachingChallan, ledgers, qualitie
       ...isteachingChallan,
       date: new Date(isteachingChallan.date).toISOString().split('T')[0],
       product_size: isteachingChallan.product_size ? JSON.parse(JSON.stringify(isteachingChallan.product_size)) : [],
+      cloth_type: isteachingChallan.cloth_type || [],
     },
   })
 
@@ -106,6 +112,15 @@ export function IsteachingChallanEditForm({ isteachingChallan, ledgers, qualitie
   const productQty = watch('product_qty')
   const productSizes = watch('product_size')
   const selectedBatchNumbers = watch('batch_number') || []
+  const clothType = watch('cloth_type')
+  const topQty = watch('top_qty')
+  const topPcsQty = watch('top_pcs_qty')
+  const bottomQty = watch('bottom_qty')
+  const bottomPcsQty = watch('bottom_pcs_qty')
+
+  const topPcsCreated = topQty && topPcsQty ? Math.floor(topQty / topPcsQty) : 0
+  const bottomPcsCreated = bottomQty && bottomPcsQty ? Math.floor(bottomQty / bottomPcsQty) : 0
+  const totalProductQty = topPcsCreated + bottomPcsCreated
 
   useEffect(() => {
     if (isteachingChallan.ledger_id) {
@@ -338,6 +353,87 @@ export function IsteachingChallanEditForm({ isteachingChallan, ledgers, qualitie
             <Label htmlFor="quantity">Enter Quantity *</Label>
             <Input id="quantity" type="number" {...register('quantity', { valueAsNumber: true })} />
             {errors.quantity && <p className="text-sm text-red-600">{errors.quantity.message}</p>}
+          </div>
+        </CardContent>
+      </Card>
+
+    
+      <Card>
+        <CardHeader>
+          <CardTitle>Cloth Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Select Cloth Type</Label>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="cloth_type_top"
+                  checked={clothType?.includes('TOP')}
+                  onCheckedChange={(checked) => {
+                    const current = clothType || []
+                    const newSelection = checked
+                      ? [...current, 'TOP']
+                      : current.filter((t) => t !== 'TOP')
+                    setValue('cloth_type', newSelection)
+                  }}
+                />
+                <Label htmlFor="cloth_type_top">TOP</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="cloth_type_bottom"
+                  checked={clothType?.includes('BOTTOM')}
+                  onCheckedChange={(checked) => {
+                    const current = clothType || []
+                    const newSelection = checked
+                      ? [...current, 'BOTTOM']
+                      : current.filter((t) => t !== 'BOTTOM')
+                    setValue('cloth_type', newSelection)
+                  }}
+                />
+                <Label htmlFor="cloth_type_bottom">BOTTOM</Label>
+              </div>
+            </div>
+          </div>
+
+          {clothType?.includes('TOP') && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="top_qty">Enter Top Qty (mtr)</Label>
+                <Input id="top_qty" type="number" {...register('top_qty', { valueAsNumber: true })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="top_pcs_qty">Enter 1pcs Qty (mtr)</Label>
+                <Input id="top_pcs_qty" type="number" {...register('top_pcs_qty', { valueAsNumber: true })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Top Pcs Created</Label>
+                <p className="text-lg font-semibold">{topPcsCreated}</p>
+              </div>
+            </div>
+          )}
+
+          {clothType?.includes('BOTTOM') && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="bottom_qty">Enter Bottom Qty (mtr)</Label>
+                <Input id="bottom_qty" type="number" {...register('bottom_qty', { valueAsNumber: true })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bottom_pcs_qty">Enter 1pcs Qty (mtr)</Label>
+                <Input id="bottom_pcs_qty" type="number" {...register('bottom_pcs_qty', { valueAsNumber: true })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Bottom Pcs Created</Label>
+                <p className="text-lg font-semibold">{bottomPcsCreated}</p>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label>Total Product QTY</Label>
+            <p className="text-lg font-semibold">{totalProductQty}</p>
           </div>
         </CardContent>
       </Card>

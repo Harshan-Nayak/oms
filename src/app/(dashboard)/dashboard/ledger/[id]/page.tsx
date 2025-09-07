@@ -3,7 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Edit, Building2, Phone, Mail, MapPin, FileText } from 'lucide-react'
+import { ArrowLeft, Edit, Building2, Phone, Mail, MapPin, FileText, Printer } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { formatDate } from '@/lib/utils'
@@ -17,7 +17,7 @@ import {
   Accordion,
   AccordionContent,
   AccordionItem,
-  AccordionTrigger,
+ AccordionTrigger,
 } from '@/components/ui/accordion'
 
 interface LedgerDetailPageProps {
@@ -84,14 +84,22 @@ export default async function LedgerDetailPage({ params }: LedgerDetailPageProps
             </p>
           </div>
         </div>
-        {canEdit && (
-          <Link href={`/dashboard/ledger/${ledger.ledger_id}/edit`}>
-            <Button>
-              <Edit className="h-4 w-4 mr-2" />
-              Edit Ledger
+        <div className="flex items-center space-x-2">
+          <Link href={`/print/ledger/${ledger.ledger_id}`}>
+            <Button variant="outline">
+              <Printer className="h-4 w-4 mr-2" />
+              Print Ledger
             </Button>
           </Link>
-        )}
+          {canEdit && (
+            <Link href={`/dashboard/ledger/${ledger.ledger_id}/edit`}>
+              <Button>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Ledger
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -153,8 +161,12 @@ export default async function LedgerDetailPage({ params }: LedgerDetailPageProps
                   <p className="text-gray-900">{ledger.contact_person_name || 'Not specified'}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700">GST Number</label>
-                  <p className="font-mono text-sm">{ledger.gst_number || 'Not provided'}</p>
+                  <label className="text-sm font-medium text-gray-700">
+                    {ledger.gst_number ? 'GST Number' : 'PAN Number'}
+                  </label>
+                  <p className="font-mono text-sm">
+                    {ledger.gst_number || ledger.pan_number || 'Not provided'}
+                  </p>
                 </div>
               </div>
             </CardContent>

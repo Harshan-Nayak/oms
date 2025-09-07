@@ -131,6 +131,11 @@ export type Database = {
           created_by: string | null
           created_at: string
           updated_at: string
+          cloth_type: string[] | null
+          top_qty: number | null
+          top_pcs_qty: number | null
+          bottom_qty: number | null
+          bottom_pcs_qty: number | null
         }
         Insert: {
           challan_no: string
@@ -153,6 +158,11 @@ export type Database = {
           created_by?: string | null
           created_at?: string
           updated_at?: string
+          cloth_type?: string[] | null
+          top_qty?: number | null
+          top_pcs_qty?: number | null
+          bottom_qty?: number | null
+          bottom_pcs_qty?: number | null
         }
         Update: {
           challan_no?: string
@@ -175,6 +185,11 @@ export type Database = {
           created_by?: string | null
           created_at?: string
           updated_at?: string
+          cloth_type?: string[] | null
+          top_qty?: number | null
+          top_pcs_qty?: number | null
+          bottom_qty?: number | null
+          bottom_pcs_qty?: number | null
         }
         Relationships: [
           {
@@ -211,6 +226,7 @@ export type Database = {
           state: string | null
           updated_at: string
           zip_code: string | null
+          pan_number: string | null
         }
         Insert: {
           address?: string | null
@@ -229,6 +245,7 @@ export type Database = {
           state?: string | null
           updated_at?: string
           zip_code?: string | null
+          pan_number?: string | null
         }
         Update: {
           address?: string | null
@@ -247,6 +264,7 @@ export type Database = {
           state?: string | null
           updated_at?: string
           zip_code?: string | null
+          pan_number?: string | null
         }
         Relationships: [
           {

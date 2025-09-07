@@ -56,6 +56,7 @@ const ledgerSchema = z.object({
   zip_code: z.string().optional().refine((value) => !value || /^\d{6}$/.test(value), {
     message: 'ZIP code must be 6 digits',
   }),
+  has_gst: z.boolean().default(false),
   gst_number: z.string()
     .optional()
     .refine(
@@ -68,13 +69,34 @@ const ledgerSchema = z.object({
         message: 'Invalid GST number format',
       }
     ),
+  pan_number: z.string()
+    .optional()
+    .refine(
+      (value) =>
+        !value ||
+        /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value.toUpperCase()),
+      {
+        message: 'Invalid PAN number format (e.g., ABCDE1234F)',
+      }
+    ),
+}).refine((data) => {
+  if (data.has_gst && !data.gst_number) {
+    return false;
+  }
+  if (!data.has_gst && !data.pan_number) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Either GST number or PAN number is required',
+  path: ['gst_number'],
 })
 
 type LedgerFormData = z.infer<typeof ledgerSchema>
 
 interface LedgerFormProps {
   userId: string
-  ledger?: Database['public']['Tables']['ledgers']['Row']
+  ledger?: Database['public']['Tables']['ledgers']['Row'] & { pan_number?: string | null }
   isEdit?: boolean
 }
 
@@ -94,7 +116,8 @@ export function LedgerForm({ userId, ledger, isEdit = false }: LedgerFormProps) 
     handleSubmit,
     formState: { errors },
     setValue,
-  } = useForm<LedgerFormData>({
+    watch,
+  } = useForm({
     resolver: zodResolver(ledgerSchema),
     defaultValues: {
       business_name: ledger?.business_name || '',
@@ -107,9 +130,25 @@ export function LedgerForm({ userId, ledger, isEdit = false }: LedgerFormProps) 
       state: ledger?.state || '',
       country: ledger?.country || 'India',
       zip_code: ledger?.zip_code || '',
+      has_gst: !!ledger?.gst_number || false,
       gst_number: ledger?.gst_number || '',
+      pan_number: ledger?.pan_number || '',
     },
   })
+
+  const hasGst = watch('has_gst')
+
+  // Update form validation when has_gst changes
+  const handleGstToggle = (value: boolean) => {
+    setValue('has_gst', value)
+    if (value) {
+      // If GST is selected, clear PAN number
+      setValue('pan_number', '')
+    } else {
+      // If PAN is selected, clear GST number
+      setValue('gst_number', '')
+    }
+  }
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -185,10 +224,12 @@ export function LedgerForm({ userId, ledger, isEdit = false }: LedgerFormProps) 
         }
       }
 
+      const { has_gst, ...restOfData } = data
+
       if (isEdit && ledger) {
         // UPDATE operation
         const ledgerUpdateData = {
-          ...data,
+          ...restOfData,
           business_logo: logoUrl,
           updated_at: new Date().toISOString(),
         }
@@ -207,7 +248,7 @@ export function LedgerForm({ userId, ledger, isEdit = false }: LedgerFormProps) 
       } else {
         // INSERT operation
         const ledgerInsertData: Ledger = {
-          ...data,
+          ...restOfData,
           ledger_id: generateLedgerId(),
           business_logo: logoUrl,
           created_by: userId,
@@ -326,7 +367,7 @@ export function LedgerForm({ userId, ledger, isEdit = false }: LedgerFormProps) 
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="contact_person_name">Contact Person</Label>
               <Input
@@ -336,17 +377,62 @@ export function LedgerForm({ userId, ledger, isEdit = false }: LedgerFormProps) 
               />
             </div>
 
+            {/* GST/PAN Toggle */}
             <div className="space-y-2">
-              <Label htmlFor="gst_number">GST Number</Label>
-              <Input
-                id="gst_number"
-                {...register('gst_number')}
-                placeholder="Enter GST number"
-              />
-              {errors.gst_number && (
-                <p className="text-sm text-red-600">{errors.gst_number.message}</p>
-              )}
+              <Label>Business Registration Type</Label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    value="gst"
+                    checked={hasGst}
+                    onChange={() => handleGstToggle(true)}
+                    className="h-4 w-4"
+                  />
+                  <span>Has GST</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    value="pan"
+                    checked={!hasGst}
+                    onChange={() => handleGstToggle(false)}
+                    className="h-4 w-4"
+                  />
+                  <span>Has PAN Only</span>
+                </label>
+              </div>
             </div>
+
+            {/* Conditional Fields */}
+            {hasGst ? (
+              <div className="space-y-2">
+                <Label htmlFor="gst_number">GST Number *</Label>
+                <Input
+                  id="gst_number"
+                  {...register('gst_number')}
+                  placeholder="Enter GST number (e.g., 12ABCDE1234PZ)"
+                />
+                {errors.gst_number && (
+                  <p className="text-sm text-red-600">{errors.gst_number.message}</p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="pan_number">PAN Number *</Label>
+                <Input
+                  id="pan_number"
+                  {...register('pan_number')}
+                  placeholder="Enter PAN number (e.g., ABCDE1234F)"
+                />
+                {errors.pan_number && (
+                  <p className="text-sm text-red-600">{errors.pan_number.message}</p>
+                )}
+                {errors.gst_number && !errors.pan_number && (
+                  <p className="text-sm text-red-600">{errors.gst_number.message}</p>
+                )}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
