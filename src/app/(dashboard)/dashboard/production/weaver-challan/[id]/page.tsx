@@ -289,9 +289,63 @@ export default async function WeaverChallanDetailPage({ params }: WeaverChallanD
                   <p className="font-mono text-sm">{weaverChallan.vendor_invoice_number || 'Not provided'}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Amount</label>
+                  <label className="text-sm font-medium text-gray-700">Amount (Without GST)</label>
                   <p className="text-lg font-semibold">₹{weaverChallan.vendor_amount?.toLocaleString() || '0.00'}</p>
                 </div>
+                
+                {/* GST Information */}
+                {(weaverChallan.sgst || weaverChallan.cgst || weaverChallan.igst) && (
+                  <div className="col-span-full">
+                    <label className="text-sm font-medium text-gray-700">GST Details</label>
+                    <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        {weaverChallan.sgst && weaverChallan.sgst !== 'Not Applicable' && (
+                          <div>
+                            <p className="text-gray-600">SGST ({weaverChallan.sgst}):</p>
+                            <p className="font-medium text-green-600">
+                              ₹{((weaverChallan.vendor_amount || 0) * (parseFloat(weaverChallan.sgst.replace('%', '')) / 100)).toFixed(2)}
+                            </p>
+                          </div>
+                        )}
+                        {weaverChallan.cgst && weaverChallan.cgst !== 'Not Applicable' && (
+                          <div>
+                            <p className="text-gray-600">CGST ({weaverChallan.cgst}):</p>
+                            <p className="font-medium text-green-600">
+                              ₹{((weaverChallan.vendor_amount || 0) * (parseFloat(weaverChallan.cgst.replace('%', '')) / 100)).toFixed(2)}
+                            </p>
+                          </div>
+                        )}
+                        {weaverChallan.igst && weaverChallan.igst !== 'Not Applicable' && (
+                          <div>
+                            <p className="text-gray-600">IGST ({weaverChallan.igst}):</p>
+                            <p className="font-medium text-green-600">
+                              ₹{((weaverChallan.vendor_amount || 0) * (parseFloat(weaverChallan.igst.replace('%', '')) / 100)).toFixed(2)}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-3 pt-3 border-t border-blue-300">
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold text-gray-800">Total Amount (After GST):</span>
+                          <span className="font-bold text-lg text-blue-700">
+                            ₹{(
+                              (weaverChallan.vendor_amount || 0) +
+                              (weaverChallan.sgst && weaverChallan.sgst !== 'Not Applicable' 
+                                ? (weaverChallan.vendor_amount || 0) * (parseFloat(weaverChallan.sgst.replace('%', '')) / 100) 
+                                : 0) +
+                              (weaverChallan.cgst && weaverChallan.cgst !== 'Not Applicable' 
+                                ? (weaverChallan.vendor_amount || 0) * (parseFloat(weaverChallan.cgst.replace('%', '')) / 100) 
+                                : 0) +
+                              (weaverChallan.igst && weaverChallan.igst !== 'Not Applicable' 
+                                ? (weaverChallan.vendor_amount || 0) * (parseFloat(weaverChallan.igst.replace('%', '')) / 100) 
+                                : 0)
+                            ).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

@@ -57,6 +57,11 @@ const isteachingChallanSchema = z.object({
   product_qty: z.number().min(0).optional(),
   product_color: z.string().optional(),
   product_size: z.array(sizeSchema).optional(),
+  category: z.string().optional(),
+  sub_category: z.string().optional(),
+  status: z.enum(['Active', 'Inactive', 'Pipeline']).optional(),
+  brand: z.string().optional(),
+  made_in: z.string().optional(),
   transport_name: z.string().optional(),
   lr_number: z.string().optional(),
   transport_charge: z.number().min(0).optional(),
@@ -121,6 +126,7 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
   const topPcsQty = watch('top_pcs_qty')
   const bottomQty = watch('bottom_qty')
   const bottomPcsQty = watch('bottom_pcs_qty')
+  const currentStatus = watch('status')
 
   const topPcsCreated = topQty && topPcsQty ? Math.floor(topQty / topPcsQty) : 0
   const bottomPcsCreated = bottomQty && bottomPcsQty ? Math.floor(bottomQty / bottomPcsQty) : 0
@@ -542,6 +548,44 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
           <div className="space-y-2">
             <Label htmlFor="product_color">Product Color</Label>
             <Input id="product_color" {...register('product_color')} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="category">Category</Label>
+            <Input id="category" {...register('category')} placeholder="Enter category" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="sub_category">Sub Category</Label>
+            <Input id="sub_category" {...register('sub_category')} placeholder="Enter sub category" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="status">Status</Label>
+            <Select onValueChange={(value) => setValue('status', value as 'Active' | 'Inactive' | 'Pipeline')} defaultValue="Active">
+              <SelectTrigger>
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent className='bg-white'>
+                {productQty === 0 ? (
+                  <>
+                    <SelectItem value="Inactive">Inactive</SelectItem>
+                    <SelectItem value="Pipeline">Pipeline</SelectItem>
+                  </>
+                ) : (
+                  <>
+                    <SelectItem value="Active">Active</SelectItem>
+                    <SelectItem value="Inactive">Inactive</SelectItem>
+                    <SelectItem value="Pipeline">Pipeline</SelectItem>
+                  </>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="brand">Brand</Label>
+            <Input id="brand" {...register('brand')} placeholder="Enter brand" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="made_in">Made In</Label>
+            <Input id="made_in" {...register('made_in')} placeholder="Enter manufacturing location" />
           </div>
         </CardContent>
       </Card>

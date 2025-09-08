@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast'
 
 type Ledger = Database['public']['Tables']['ledgers']['Row']
 type WeaverChallan = Database['public']['Tables']['weaver_challans']['Insert']
+type GSTPercentage = '2.5%' | '5%' | '6%' | '9%' | '12%' | '18%' | 'Not Applicable'
 
 const qualityDetailSchema = z.object({
   quality_name: z.string().min(1, 'Quality name is required'),
@@ -47,6 +48,9 @@ const weaverChallanSchema = z.object({
   vendor_ledger_id: z.string().optional(),
   vendor_invoice_number: z.string().optional(),
   vendor_amount: z.number().min(0).optional(),
+  sgst: z.enum(['2.5%', '5%', '6%', '9%', '12%', '18%', 'Not Applicable']).optional(),
+  cgst: z.enum(['2.5%', '5%', '6%', '9%', '12%', '18%', 'Not Applicable']).optional(),
+  igst: z.enum(['2.5%', '5%', '6%', '9%', '12%', '18%', 'Not Applicable']).optional(),
 })
 
 type WeaverChallanFormData = z.infer<typeof weaverChallanSchema>
@@ -122,6 +126,26 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
 
   const qualityDetails = watch('quality_details')
   const takaValue = watch('taka');
+  const vendorAmount = watch('vendor_amount')
+  const sgst = watch('sgst')
+  const cgst = watch('cgst')
+  const igst = watch('igst')
+
+  // GST Calculation Logic
+  const calculateGSTAmount = (percentage: string | undefined, baseAmount: number) => {
+    if (!percentage || percentage === 'Not Applicable') return 0
+    const rate = parseFloat(percentage.replace('%', '')) / 100
+    return baseAmount * rate
+  }
+
+  const gstCalculation = {
+    baseAmount: vendorAmount || 0,
+    sgstAmount: calculateGSTAmount(sgst, vendorAmount || 0),
+    cgstAmount: calculateGSTAmount(cgst, vendorAmount || 0),
+    igstAmount: calculateGSTAmount(igst, vendorAmount || 0),
+    totalGST: calculateGSTAmount(sgst, vendorAmount || 0) + calculateGSTAmount(cgst, vendorAmount || 0) + calculateGSTAmount(igst, vendorAmount || 0),
+    totalAmount: (vendorAmount || 0) + calculateGSTAmount(sgst, vendorAmount || 0) + calculateGSTAmount(cgst, vendorAmount || 0) + calculateGSTAmount(igst, vendorAmount || 0)
+  }
 
   // Auto-calculate total grey meter from quality details
   const calculateTotalGreyMtr = () => {
@@ -216,6 +240,9 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
         vendor_ledger_id: data.vendor_ledger_id || null,
         vendor_invoice_number: data.vendor_invoice_number || null,
         vendor_amount: data.vendor_amount || null,
+        sgst: data.sgst || null,
+        cgst: data.cgst || null,
+        igst: data.igst || null,
       }
 
       const { error: insertError } = await supabase
@@ -321,7 +348,7 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="vendor_amount">Amount</Label>
+              <Label htmlFor="vendor_amount">Amount (Without GST)</Label>
               <Input
                 id="vendor_amount"
                 type="number"
@@ -331,6 +358,104 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
               />
             </div>
           </div>
+
+          {/* GST Fields */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="sgst">SGST</Label>
+<Select onValueChange={(value) => setValue('sgst', value as GSTPercentage)} defaultValue="Not Applicable">
+                <SelectTrigger>
+                  <SelectValue placeholder="Select SGST" />
+                </SelectTrigger>
+                <SelectContent className='bg-white'>
+                  <SelectItem value="2.5%">2.5%</SelectItem>
+                  <SelectItem value="5%">5%</SelectItem>
+                  <SelectItem value="6%">6%</SelectItem>
+                  <SelectItem value="9%">9%</SelectItem>
+                  <SelectItem value="12%">12%</SelectItem>
+                  <SelectItem value="18%">18%</SelectItem>
+                  <SelectItem value="Not Applicable">Not Applicable</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cgst">CGST</Label>
+<Select onValueChange={(value) => setValue('cgst', value as GSTPercentage)} defaultValue="Not Applicable">
+                <SelectTrigger>
+                  <SelectValue placeholder="Select CGST" />
+                </SelectTrigger>
+                <SelectContent className='bg-white'>
+                  <SelectItem value="2.5%">2.5%</SelectItem>
+                  <SelectItem value="5%">5%</SelectItem>
+                  <SelectItem value="6%">6%</SelectItem>
+                  <SelectItem value="9%">9%</SelectItem>
+                  <SelectItem value="12%">12%</SelectItem>
+                  <SelectItem value="18%">18%</SelectItem>
+                  <SelectItem value="Not Applicable">Not Applicable</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="igst">IGST</Label>
+<Select onValueChange={(value) => setValue('igst', value as GSTPercentage)} defaultValue="Not Applicable">
+                <SelectTrigger>
+                  <SelectValue placeholder="Select IGST" />
+                </SelectTrigger>
+                <SelectContent className='bg-white'>
+                  <SelectItem value="2.5%">2.5%</SelectItem>
+                  <SelectItem value="5%">5%</SelectItem>
+                  <SelectItem value="6%">6%</SelectItem>
+                  <SelectItem value="9%">9%</SelectItem>
+                  <SelectItem value="12%">12%</SelectItem>
+                  <SelectItem value="18%">18%</SelectItem>
+                  <SelectItem value="Not Applicable">Not Applicable</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* GST Calculation Display */}
+          {vendorAmount && vendorAmount > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="font-semibold text-blue-900 mb-3">GST Calculation Breakdown</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-gray-600">Amount (Without GST):</p>
+                  <p className="font-medium text-gray-800">₹{gstCalculation.baseAmount.toFixed(2)}</p>
+                </div>
+                {gstCalculation.sgstAmount > 0 && (
+                  <div>
+                    <p className="text-gray-600">SGST ({sgst}):</p>
+                    <p className="font-medium text-green-600">₹{gstCalculation.sgstAmount.toFixed(2)}</p>
+                  </div>
+                )}
+                {gstCalculation.cgstAmount > 0 && (
+                  <div>
+                    <p className="text-gray-600">CGST ({cgst}):</p>
+                    <p className="font-medium text-green-600">₹{gstCalculation.cgstAmount.toFixed(2)}</p>
+                  </div>
+                )}
+                {gstCalculation.igstAmount > 0 && (
+                  <div>
+                    <p className="text-gray-600">IGST ({igst}):</p>
+                    <p className="font-medium text-green-600">₹{gstCalculation.igstAmount.toFixed(2)}</p>
+                  </div>
+                )}
+                {gstCalculation.totalGST > 0 && (
+                  <div>
+                    <p className="text-gray-600">Total GST:</p>
+                    <p className="font-medium text-blue-600">₹{gstCalculation.totalGST.toFixed(2)}</p>
+                  </div>
+                )}
+              </div>
+              <div className="mt-3 pt-3 border-t border-blue-300">
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-gray-800">Total Amount (After GST):</span>
+                  <span className="font-bold text-lg text-blue-700">₹{gstCalculation.totalAmount.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {selectedLedger && (
             <div className="bg-gray-50 p-4 rounded-lg">

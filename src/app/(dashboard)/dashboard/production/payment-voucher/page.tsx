@@ -34,6 +34,9 @@ export default async function PaymentVoucherPage() {
   // Fetch ledgers for dropdown
   const { data: ledgers } = await supabase.from('ledgers').select('*');
 
+  // Fetch stitching challans
+  const { data: stitchingChallans } = await supabase.from('isteaching_challans').select('*');
+
   return (
     <PaymentVoucherContent 
       userId={user.id} 
@@ -41,6 +44,7 @@ export default async function PaymentVoucherPage() {
       userRole={profile.user_role}
       paymentVouchers={paymentVouchers || []}
       totalCount={count || 0}
+      stitchingChallans={stitchingChallans || []}
     />
   );
 }

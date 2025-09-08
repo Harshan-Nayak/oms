@@ -82,6 +82,9 @@ CREATE TABLE public.weaver_challans (
   vendor_ledger_id TEXT REFERENCES ledgers(ledger_id),
   vendor_invoice_number TEXT,
   vendor_amount NUMERIC,
+  sgst TEXT CHECK (sgst IN ('2.5%', '5%', '6%', '9%', '12%', '18%', 'Not Applicable')),
+  cgst TEXT CHECK (cgst IN ('2.5%', '5%', '6%', '9%', '12%', '18%', 'Not Applicable')),
+  igst TEXT CHECK (igst IN ('2.5%', '5%', '6%', '9%', '12%', '18%', 'Not Applicable')),
   created_by UUID REFERENCES auth.users(id),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -130,6 +133,11 @@ CREATE TABLE public.isteaching_challans (
   product_qty INTEGER,
   product_color TEXT,
   product_size JSONB,
+  category TEXT,
+  sub_category TEXT,
+  status TEXT CHECK (status IN ('Active', 'Inactive', 'Pipeline')) DEFAULT 'Active',
+  brand TEXT,
+  made_in TEXT,
   transport_name TEXT,
   lr_number TEXT,
   transport_charge DECIMAL(10,2),
@@ -142,6 +150,11 @@ CREATE TABLE public.isteaching_challans (
   bottom_qty NUMERIC,
   bottom_pcs_qty NUMERIC
 );
+
+-- Add comments for GST fields in weaver_challans
+COMMENT ON COLUMN public.weaver_challans.sgst IS 'State Goods and Services Tax percentage';
+COMMENT ON COLUMN public.weaver_challans.cgst IS 'Central Goods and Services Tax percentage';
+COMMENT ON COLUMN public.weaver_challans.igst IS 'Integrated Goods and Services Tax percentage';
 
 -- Create isteaching_challan_logs table
 CREATE TABLE public.isteaching_challan_logs (

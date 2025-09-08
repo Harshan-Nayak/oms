@@ -56,6 +56,11 @@ const isteachingChallanSchema = z.object({
   product_qty: z.number().min(0).optional().nullable(),
   product_color: z.string().optional().nullable(),
   product_size: z.array(sizeSchema).optional().nullable(),
+  category: z.string().optional().nullable(),
+  sub_category: z.string().optional().nullable(),
+  status: z.enum(['Active', 'Inactive', 'Pipeline']).optional().nullable(),
+  brand: z.string().optional().nullable(),
+  made_in: z.string().optional().nullable(),
   transport_name: z.string().optional().nullable(),
   lr_number: z.string().optional().nullable(),
   transport_charge: z.number().min(0).optional().nullable(),
@@ -96,10 +101,30 @@ export function IsteachingChallanEditForm({ isteachingChallan, ledgers, qualitie
   } = useForm<IsteachingChallanFormData>({
     resolver: zodResolver(isteachingChallanSchema),
     defaultValues: {
-      ...isteachingChallan,
       date: new Date(isteachingChallan.date).toISOString().split('T')[0],
+      ledger_id: isteachingChallan.ledger_id,
+      quality: isteachingChallan.quality,
+      batch_number: isteachingChallan.batch_number,
+      quantity: isteachingChallan.quantity,
+      product_name: isteachingChallan.product_name,
+      product_description: isteachingChallan.product_description,
+      product_sku: isteachingChallan.product_sku,
+      product_qty: isteachingChallan.product_qty,
+      product_color: isteachingChallan.product_color,
       product_size: isteachingChallan.product_size ? JSON.parse(JSON.stringify(isteachingChallan.product_size)) : [],
+      category: isteachingChallan.category,
+      sub_category: isteachingChallan.sub_category,
+      status: isteachingChallan.status as 'Active' | 'Inactive' | 'Pipeline' | null,
+      brand: isteachingChallan.brand,
+      made_in: isteachingChallan.made_in,
+      transport_name: isteachingChallan.transport_name,
+      lr_number: isteachingChallan.lr_number,
+      transport_charge: isteachingChallan.transport_charge,
       cloth_type: isteachingChallan.cloth_type || [],
+      top_qty: isteachingChallan.top_qty,
+      top_pcs_qty: isteachingChallan.top_pcs_qty,
+      bottom_qty: isteachingChallan.bottom_qty,
+      bottom_pcs_qty: isteachingChallan.bottom_pcs_qty,
     },
   })
 
@@ -117,6 +142,7 @@ export function IsteachingChallanEditForm({ isteachingChallan, ledgers, qualitie
   const topPcsQty = watch('top_pcs_qty')
   const bottomQty = watch('bottom_qty')
   const bottomPcsQty = watch('bottom_pcs_qty')
+  const currentStatus = watch('status')
 
   const topPcsCreated = topQty && topPcsQty ? Math.floor(topQty / topPcsQty) : 0
   const bottomPcsCreated = bottomQty && bottomPcsQty ? Math.floor(bottomQty / bottomPcsQty) : 0
@@ -503,6 +529,44 @@ export function IsteachingChallanEditForm({ isteachingChallan, ledgers, qualitie
             <Label htmlFor="product_color">Product Color</Label>
             <Input id="product_color" {...register('product_color')} />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="category">Category</Label>
+            <Input id="category" {...register('category')} placeholder="Enter category" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="sub_category">Sub Category</Label>
+            <Input id="sub_category" {...register('sub_category')} placeholder="Enter sub category" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="status">Status</Label>
+            <Select onValueChange={(value) => setValue('status', value as 'Active' | 'Inactive' | 'Pipeline')} defaultValue={isteachingChallan.status || 'Active'}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent className='bg-white'>
+                {productQty === 0 ? (
+                  <>
+                    <SelectItem value="Inactive">Inactive</SelectItem>
+                    <SelectItem value="Pipeline">Pipeline</SelectItem>
+                  </>
+                ) : (
+                  <>
+                    <SelectItem value="Active">Active</SelectItem>
+                    <SelectItem value="Inactive">Inactive</SelectItem>
+                    <SelectItem value="Pipeline">Pipeline</SelectItem>
+                  </>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="brand">Brand</Label>
+            <Input id="brand" {...register('brand')} placeholder="Enter brand" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="made_in">Made In</Label>
+            <Input id="made_in" {...register('made_in')} placeholder="Enter manufacturing location" />
+          </div>
         </CardContent>
       </Card>
 
@@ -511,9 +575,11 @@ export function IsteachingChallanEditForm({ isteachingChallan, ledgers, qualitie
           <CardTitle>Product Size</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {fields.map((field, index) => (
+          {fields.map((field, index) => {
+            const sizeField = field as { id: string; size: string; quantity: number }
+            return (
             <div key={field.id} className="flex items-center gap-4">
-              <Select onValueChange={(value) => setValue(`product_size.${index}.size`, value)} defaultValue={field.size}>
+              <Select onValueChange={(value) => setValue(`product_size.${index}.size`, value)} defaultValue={sizeField.size}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select size" />
                 </SelectTrigger>
@@ -528,7 +594,8 @@ export function IsteachingChallanEditForm({ isteachingChallan, ledgers, qualitie
                 </Button>
               )}
             </div>
-          ))}
+            )
+          })}
           <Button type="button" variant="outline" onClick={() => append({ size: 'S', quantity: 0 })}>
             <Plus className="h-4 w-4 mr-2" /> Add Size
           </Button>

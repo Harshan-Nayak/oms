@@ -263,6 +263,26 @@ export default async function IsteachingChallanDetailPage({ params }: Isteaching
                 <label className="text-sm font-medium text-gray-700">Product Color</label>
                 <p className="text-gray-900">{isteachingChallan.product_color || 'N/A'}</p>
               </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Category</label>
+                <p className="text-gray-900">{isteachingChallan.category || 'N/A'}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Sub Category</label>
+                <p className="text-gray-900">{isteachingChallan.sub_category || 'N/A'}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Status</label>
+                <p className="text-gray-900">{isteachingChallan.status || 'N/A'}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Brand</label>
+                <p className="text-gray-900">{isteachingChallan.brand || 'N/A'}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Made In</label>
+                <p className="text-gray-900">{isteachingChallan.made_in || 'N/A'}</p>
+              </div>
               <div className="col-span-full">
                 <label className="text-sm font-medium text-gray-700">Product Description</label>
                 <p className="text-gray-900">{isteachingChallan.product_description || 'N/A'}</p>

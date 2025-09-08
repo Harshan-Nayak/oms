@@ -125,6 +125,11 @@ export type Database = {
           product_qty: number | null
           product_color: string | null
           product_size: Json | null
+          category: string | null
+          sub_category: string | null
+          status: string | null
+          brand: string | null
+          made_in: string | null
           transport_name: string | null
           lr_number: string | null
           transport_charge: number | null
@@ -152,6 +157,11 @@ export type Database = {
           product_qty?: number | null
           product_color?: string | null
           product_size?: Json | null
+          category?: string | null
+          sub_category?: string | null
+          status?: string | null
+          brand?: string | null
+          made_in?: string | null
           transport_name?: string | null
           lr_number?: string | null
           transport_charge?: number | null
@@ -179,6 +189,11 @@ export type Database = {
           product_qty?: number | null
           product_color?: string | null
           product_size?: Json | null
+          category?: string | null
+          sub_category?: string | null
+          status?: string | null
+          brand?: string | null
+          made_in?: string | null
           transport_name?: string | null
           lr_number?: string | null
           transport_charge?: number | null
@@ -601,6 +616,9 @@ export type Database = {
           vendor_ledger_id: string | null
           vendor_invoice_number: string | null
           vendor_amount: number | null
+          sgst: string | null
+          cgst: string | null
+          igst: string | null
         }
         Insert: {
           batch_number: string
@@ -624,6 +642,9 @@ export type Database = {
           vendor_ledger_id?: string | null
           vendor_invoice_number?: string | null
           vendor_amount?: number | null
+          sgst?: string | null
+          cgst?: string | null
+          igst?: string | null
         }
         Update: {
           batch_number?: string
@@ -647,6 +668,9 @@ export type Database = {
           vendor_ledger_id?: string | null
           vendor_invoice_number?: string | null
           vendor_amount?: number | null
+          sgst?: string | null
+          cgst?: string | null
+          igst?: string | null
         }
         Relationships: [
           {

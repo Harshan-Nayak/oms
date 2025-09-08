@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Table,
   TableBody,
@@ -32,7 +33,8 @@ import {
   Eye,
   History,
   Calendar,
-  IndianRupee
+  IndianRupee,
+  Loader2
 } from 'lucide-react';
 import { Database } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
@@ -49,6 +51,7 @@ type PaymentVoucher = Database['public']['Tables']['payment_vouchers']['Row'] & 
 
 type Ledger = Database['public']['Tables']['ledgers']['Row'];
 type UserRole = Database['public']['Tables']['profiles']['Row']['user_role'];
+type StitchingChallan = Database['public']['Tables']['isteaching_challans']['Row'];
 
 interface PaymentVoucherContentProps {
   userId: string;
@@ -56,6 +59,7 @@ interface PaymentVoucherContentProps {
   userRole: UserRole;
   paymentVouchers: PaymentVoucher[];
   totalCount: number;
+  stitchingChallans: StitchingChallan[];
 }
 
 export function PaymentVoucherContent({ 
@@ -63,7 +67,8 @@ export function PaymentVoucherContent({
   ledgers, 
   userRole, 
   paymentVouchers,
-  totalCount
+  totalCount,
+  stitchingChallans
 }: PaymentVoucherContentProps) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -149,16 +154,49 @@ export function PaymentVoucherContent({
     ledger_id: '',
     payment_for: '',
     payment_type: 'Credit',
-    amount: ''
+    amount: '',
+    transaction_to_settle: '',
+    sgst: 'Not Applicable',
+    cgst: 'Not Applicable',
+    igst: 'Not Applicable'
   });
+  const [challanSearchTerm, setChallanSearchTerm] = useState('');
+// Define types for better type safety
+type Transaction = {
+  id: string;
+  type: string;
+  reference: string;
+  date: string;
+  amount: number;
+  description: string;
+};
+
+type QualityDetail = {
+  quality_name: string;
+  rate?: number;
+  grey_mtr?: number;
+};
+
+// ... existing code ...
+
+  const [availableTransactions, setAvailableTransactions] = useState<Transaction[]>([]);
+  const [loadingTransactions, setLoadingTransactions] = useState(false);
   
   const [loading, setLoading] = useState(false);
 
   const handleLedgerSelect = (ledgerId: string) => {
     setFormData(prev => ({
       ...prev,
-      ledger_id: ledgerId
+      ledger_id: ledgerId,
+      transaction_to_settle: ''
     }));
+    
+    // Fetch available transactions when ledger is selected
+    if (ledgerId) {
+      fetchAvailableTransactions(ledgerId, formData.payment_type);
+    } else {
+      setAvailableTransactions([]);
+    }
   };
 
   const handleChange = (field: string, value: string) => {
@@ -166,7 +204,136 @@ export function PaymentVoucherContent({
       ...prev,
       [field]: value
     }));
+    
+    // If payment type changes, reset transaction selection and reload transactions
+    if (field === 'payment_type' && formData.ledger_id) {
+      setFormData(prev => ({ ...prev, transaction_to_settle: '' }));
+      fetchAvailableTransactions(formData.ledger_id, value);
+    }
   };
+
+  const filteredStitchingChallans = stitchingChallans.filter(challan =>
+    challan.challan_no.toLowerCase().includes(challanSearchTerm.toLowerCase()) ||
+    challan.quality.toLowerCase().includes(challanSearchTerm.toLowerCase())
+  );
+
+  // Function to fetch available transactions for settlement
+  const fetchAvailableTransactions = async (ledgerId: string, paymentType: string) => {
+    setLoadingTransactions(true);
+    try {
+      const transactions: Transaction[] = [];
+      
+      if (paymentType === 'Credit') {
+        // For Credit payments, fetch Debit transactions (what the ledger owes)
+        
+        // Fetch weaver challans with vendor amounts (debit transactions)
+        const { data: weaverChallans } = await supabase
+          .from('weaver_challans')
+          .select('id, challan_no, challan_date, vendor_amount, batch_number')
+          .eq('vendor_ledger_id', ledgerId)
+          .not('vendor_amount', 'is', null)
+          .gt('vendor_amount', 0);
+        
+        if (weaverChallans) {
+          transactions.push(...weaverChallans.map(challan => ({
+            id: `weaver_${challan.id}`,
+            type: 'Weaver Challan',
+            reference: challan.challan_no,
+            date: challan.challan_date,
+            amount: challan.vendor_amount,
+            description: `Batch: ${challan.batch_number}`
+          })));
+        }
+        
+        // Fetch stitching challans (debit transactions)
+        const { data: stitchingChallans } = await supabase
+          .from('isteaching_challans')
+          .select('id, challan_no, date, transport_charge, quality, batch_number')
+          .eq('ledger_id', ledgerId)
+          .not('transport_charge', 'is', null)
+          .gt('transport_charge', 0);
+        
+        if (stitchingChallans) {
+          transactions.push(...stitchingChallans.map(challan => ({
+            id: `stitching_${challan.id}`,
+            type: 'Stitching Challan',
+            reference: challan.challan_no,
+            date: challan.date,
+            amount: challan.transport_charge,
+            description: `Quality: ${challan.quality}, Batch: ${Array.isArray(challan.batch_number) ? challan.batch_number.join(', ') : challan.batch_number}`
+          })));
+        }
+        
+      } else {
+        // For Debit payments, fetch Credit transactions (what we owe to the ledger)
+        
+        // Fetch weaver challans as credit transactions (when ledger is the main party)
+        const { data: weaverChallans } = await supabase
+          .from('weaver_challans')
+          .select('id, challan_no, challan_date, total_grey_mtr, batch_number, quality_details')
+          .eq('ledger_id', ledgerId);
+        
+        if (weaverChallans) {
+          transactions.push(...weaverChallans.map(challan => {
+            const qualityName = Array.isArray(challan.quality_details) && 
+                               challan.quality_details.length > 0 && 
+                               challan.quality_details[0] && 
+                               typeof challan.quality_details[0] === 'object' && 
+                               'quality_name' in challan.quality_details[0]
+              ? (challan.quality_details[0] as QualityDetail).quality_name
+              : 'N/A';
+              
+            return {
+              id: `weaver_${challan.id}`,
+              type: 'Weaver Challan',
+              reference: challan.challan_no,
+              date: challan.challan_date,
+              amount: challan.total_grey_mtr, // Using total_grey_mtr as reference amount
+              description: `Batch: ${challan.batch_number}, Quality: ${qualityName}`
+            };
+          }));
+        }
+      }
+      
+      // Sort transactions by date (newest first)
+      transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setAvailableTransactions(transactions);
+      
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      showToast('Failed to fetch available transactions', 'error');
+      setAvailableTransactions([]);
+    } finally {
+      setLoadingTransactions(false);
+    }
+  };
+
+  // Calculate GST amounts and total
+  const calculateGSTAndTotal = () => {
+    const baseAmount = parseFloat(formData.amount) || 0;
+    
+    const getGSTValue = (gstType: string) => {
+      if (gstType === 'Not Applicable') return 0;
+      return parseFloat(gstType.replace('%', '')) / 100;
+    };
+    
+    const sgstAmount = baseAmount * getGSTValue(formData.sgst);
+    const cgstAmount = baseAmount * getGSTValue(formData.cgst);
+    const igstAmount = baseAmount * getGSTValue(formData.igst);
+    
+    const totalGST = sgstAmount + cgstAmount + igstAmount;
+    const totalAmount = baseAmount + totalGST;
+    
+    return {
+      sgstAmount,
+      cgstAmount,
+      igstAmount,
+      totalGST,
+      totalAmount
+    };
+  };
+
+  const gstCalculation = calculateGSTAndTotal();
 
   const validateForm = () => {
     if (!formData.ledger_id) {
@@ -202,7 +369,7 @@ export function PaymentVoucherContent({
           ledger_id: formData.ledger_id,
           payment_for: formData.payment_for,
           payment_type: formData.payment_type,
-          amount: parseFloat(formData.amount),
+          amount: gstCalculation.totalAmount, // Store the total amount including GST
           created_by: userId
         });
       
@@ -215,8 +382,13 @@ export function PaymentVoucherContent({
         ledger_id: '',
         payment_for: '',
         payment_type: 'Credit',
-        amount: ''
+        amount: '',
+        transaction_to_settle: '',
+        sgst: 'Not Applicable',
+        cgst: 'Not Applicable',
+        igst: 'Not Applicable'
       });
+      setAvailableTransactions([]);
       setShowCreateForm(false);
       router.refresh();
     } catch (error) {
@@ -330,7 +502,53 @@ export function PaymentVoucherContent({
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="amount">Amount</Label>
+                  <Label htmlFor="transaction_to_settle">Select Transaction to Settle</Label>
+                  <Select 
+                    value={formData.transaction_to_settle} 
+                    onValueChange={(value) => handleChange('transaction_to_settle', value)}
+                    disabled={!formData.ledger_id || loadingTransactions}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={
+                        !formData.ledger_id 
+                          ? "Select a ledger first" 
+                          : loadingTransactions 
+                            ? "Loading transactions..." 
+                            : availableTransactions.length === 0
+                              ? "No transactions available"
+                              : "Select a transaction to settle"
+                      } />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white max-h-60">
+                      {availableTransactions.map((transaction) => (
+                        <SelectItem key={transaction.id} value={transaction.id}>
+                          <div className="flex flex-col">
+                            <div className="font-medium">
+                              {transaction.type} - {transaction.reference}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {formatDate(transaction.date)} | ₹{transaction.amount} | {transaction.description}
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {loadingTransactions && (
+                    <p className="text-sm text-blue-600 flex items-center">
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Loading available transactions...
+                    </p>
+                  )}
+                  {!loadingTransactions && formData.ledger_id && availableTransactions.length === 0 && (
+                    <p className="text-sm text-gray-500">
+                      No {formData.payment_type === 'Credit' ? 'debit' : 'credit'} transactions found for settlement
+                    </p>
+                  )}
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="amount">Amount (Without GST)</Label>
                   <Input
                     id="amount"
                     type="number"
@@ -342,7 +560,132 @@ export function PaymentVoucherContent({
                   />
                   <p className="text-sm text-gray-500">Enter amount with up to 2 decimal places</p>
                 </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="sgst">SGST</Label>
+                    <Select value={formData.sgst} onValueChange={(value) => handleChange('sgst', value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white">
+                        <SelectItem value="Not Applicable">Not Applicable</SelectItem>
+                        <SelectItem value="2.5%">2.5%</SelectItem>
+                        <SelectItem value="5%">5%</SelectItem>
+                        <SelectItem value="6%">6%</SelectItem>
+                        <SelectItem value="9%">9%</SelectItem>
+                        <SelectItem value="12%">12%</SelectItem>
+                        <SelectItem value="18%">18%</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {gstCalculation.sgstAmount > 0 && (
+                      <p className="text-xs text-gray-500">₹{gstCalculation.sgstAmount.toFixed(2)}</p>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="cgst">CGST</Label>
+                    <Select value={formData.cgst} onValueChange={(value) => handleChange('cgst', value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white">
+                        <SelectItem value="Not Applicable">Not Applicable</SelectItem>
+                        <SelectItem value="2.5%">2.5%</SelectItem>
+                        <SelectItem value="5%">5%</SelectItem>
+                        <SelectItem value="6%">6%</SelectItem>
+                        <SelectItem value="9%">9%</SelectItem>
+                        <SelectItem value="12%">12%</SelectItem>
+                        <SelectItem value="18%">18%</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {gstCalculation.cgstAmount > 0 && (
+                      <p className="text-xs text-gray-500">₹{gstCalculation.cgstAmount.toFixed(2)}</p>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="igst">IGST</Label>
+                    <Select value={formData.igst} onValueChange={(value) => handleChange('igst', value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white">
+                        <SelectItem value="Not Applicable">Not Applicable</SelectItem>
+                        <SelectItem value="2.5%">2.5%</SelectItem>
+                        <SelectItem value="5%">5%</SelectItem>
+                        <SelectItem value="6%">6%</SelectItem>
+                        <SelectItem value="9%">9%</SelectItem>
+                        <SelectItem value="12%">12%</SelectItem>
+                        <SelectItem value="18%">18%</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {gstCalculation.igstAmount > 0 && (
+                      <p className="text-xs text-gray-500">₹{gstCalculation.igstAmount.toFixed(2)}</p>
+                    )}
+                  </div>
+                </div>
+                
+                {(parseFloat(formData.amount) > 0 && gstCalculation.totalAmount > 0) && (
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-600">Base Amount:</p>
+                        <p className="font-medium">₹{parseFloat(formData.amount || '0').toFixed(2)}</p>
+                      </div>
+                      {gstCalculation.totalGST > 0 && (
+                        <div>
+                          <p className="text-gray-600">Total GST:</p>
+                          <p className="font-medium text-blue-600">₹{gstCalculation.totalGST.toFixed(2)}</p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-blue-300">
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold text-gray-800">Total Amount:</span>
+                        <span className="font-bold text-lg text-blue-700">₹{gstCalculation.totalAmount.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
+
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="stitching-challans">
+                  <AccordionTrigger>Show Stitching Challans</AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-4">
+                      <Input
+                        placeholder="Search challans..."
+                        value={challanSearchTerm}
+                        onChange={(e) => setChallanSearchTerm(e.target.value)}
+                      />
+                      <div className="max-h-60 overflow-y-auto border rounded-md">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Challan No</TableHead>
+                              <TableHead>Date</TableHead>
+                              <TableHead>Quality</TableHead>
+                              <TableHead>Amount</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredStitchingChallans.map(challan => (
+                              <TableRow key={challan.id}>
+                                <TableCell>{challan.challan_no}</TableCell>
+                                <TableCell>{formatDate(challan.date)}</TableCell>
+                                <TableCell>{challan.quality}</TableCell>
+                                <TableCell>{formatCurrency(challan.transport_charge || 0)}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
               
               <div className="flex justify-end space-x-2">
                 <Button 
