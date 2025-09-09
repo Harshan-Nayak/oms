@@ -56,6 +56,7 @@ export function ShortingEntryContent({ ledgers, shortingEntries, userId, userNam
                 <TableHead>Ledger</TableHead>
                 <TableHead>Weaver Challan</TableHead>
                 <TableHead>Quality</TableHead>
+                <TableHead>Weaver Challan Qty</TableHead>
                 <TableHead>Shorting Qty</TableHead>
               </TableRow>
             </TableHeader>
@@ -66,6 +67,7 @@ export function ShortingEntryContent({ ledgers, shortingEntries, userId, userNam
                   <TableCell>{entry.ledgers?.business_name}</TableCell>
                   <TableCell>{entry.weaver_challans?.challan_no}</TableCell>
                   <TableCell>{entry.quality_name}</TableCell>
+                  <TableCell>{entry.weaver_challan_qty} mtr</TableCell>
                   <TableCell>{entry.shorting_qty} mtr</TableCell>
                 </TableRow>
               ))}

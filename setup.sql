@@ -731,7 +731,11 @@ CREATE TABLE public.shorting_entries (
   weaver_challan_id INTEGER REFERENCES public.weaver_challans(id),
   quality_name TEXT,
   shorting_qty NUMERIC(10, 2) NOT NULL,
+  weaver_challan_qty DECIMAL(10,2) DEFAULT 0,
   created_by UUID REFERENCES auth.users(id),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Add comment to explain the weaver_challan_qty column
+COMMENT ON COLUMN public.shorting_entries.weaver_challan_qty IS 'Original quantity of the selected quality from the weaver challan at the time of shorting entry creation';

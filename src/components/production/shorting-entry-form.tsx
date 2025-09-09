@@ -121,6 +121,7 @@ export function ShortingEntryForm({ ledgers, userId, userName, onSuccess }: Shor
         weaver_challan_id: parseInt(data.weaver_challan_id),
         quality_name: data.quality_name,
         shorting_qty: data.shorting_qty,
+        weaver_challan_qty: availableQty, // Store the original quantity from weaver challan
         created_by: userId,
       }
 

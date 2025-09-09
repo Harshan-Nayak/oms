@@ -80,7 +80,7 @@ interface IsteachingChallanFormProps {
   batchNumbers: BatchNumber[]
   products: Product[]
   weaverChallans: WeaverChallan[]
-  shortingEntries: { quality_name: string, shorting_qty: number, batch_number: string }[]
+  shortingEntries: { quality_name: string, shorting_qty: number, weaver_challan_qty: number, batch_number: string }[]
   isteachingChallans: IsteachingChallan[]
   onSuccess: () => void
 }
@@ -90,7 +90,7 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [selectedLedger, setSelectedLedger] = useState<Ledger | null>(null)
-  const [filteredBatchNumbers, setFilteredBatchNumbers] = useState<{ batch_number: string, rate: number }[]>([])
+  const [filteredBatchNumbers, setFilteredBatchNumbers] = useState<{ batch_number: string, availableQty: number }[]>([])
   const [productImageFile, setProductImageFile] = useState<File | null>(null)
   const [productImagePreview, setProductImagePreview] = useState<string | null>(null)
   const [isAlertOpen, setIsAlertOpen] = useState(false)
@@ -134,26 +134,22 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
 
   useEffect(() => {
     if (selectedQuality) {
-      const totalQty = weaverChallans.reduce((sum, challan) => {
-        if (!challan.quality_details) return sum
-        const details = Array.isArray(challan.quality_details) ? challan.quality_details : [challan.quality_details]
-        const qualityDetail = (details as { quality_name: string, rate: number }[]).find(d => d.quality_name === selectedQuality)
-        return sum + (qualityDetail?.rate || 0)
-      }, 0)
+      // Calculate total weaver challan quantity from shorting entries for the selected quality
+      const totalWeaverChallanQty = shortingEntries
+        .filter(e => e.quality_name === selectedQuality)
+        .reduce((sum, entry) => sum + entry.weaver_challan_qty, 0)
 
-      const shortingQty = shortingEntries
+      // Calculate total shorting quantity for the selected quality
+      const totalShortingQty = shortingEntries
         .filter(e => e.quality_name === selectedQuality)
         .reduce((sum, entry) => sum + entry.shorting_qty, 0)
 
-      const stitchedQty = isteachingChallans
-        .filter(c => c.quality === selectedQuality)
-        .reduce((sum, challan) => sum + challan.quantity, 0)
-
-      setMaxQuantity(totalQty - shortingQty - stitchedQty)
+      // Available = Sum(Weaver Challan Qty) - Sum(Shorting Qty)
+      setMaxQuantity(totalWeaverChallanQty - totalShortingQty)
     } else {
       setMaxQuantity(null)
     }
-  }, [selectedQuality, weaverChallans, shortingEntries, isteachingChallans])
+  }, [selectedQuality, shortingEntries])
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -217,7 +213,10 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
     if (selectedQuality) {
       const batches = shortingEntries
         .filter(e => e.quality_name === selectedQuality)
-        .map(e => ({ batch_number: e.batch_number, rate: e.shorting_qty }))
+        .map(e => ({ 
+          batch_number: e.batch_number, 
+          availableQty: e.weaver_challan_qty - e.shorting_qty // Calculate available quantity
+        }))
       setFilteredBatchNumbers(batches)
     } else {
       setFilteredBatchNumbers([])
@@ -358,8 +357,8 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
                 <SelectValue placeholder="Select a quality" />
               </SelectTrigger>
               <SelectContent className='bg-white'>
-                {shortingEntries.map(q => (
-                  <SelectItem key={q.quality_name} value={q.quality_name}>{q.quality_name}</SelectItem>
+                {[...new Set(shortingEntries.map(q => q.quality_name))].map(qualityName => (
+                  <SelectItem key={qualityName} value={qualityName}>{qualityName}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -387,7 +386,7 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
                         setValue('batch_number', newSelection)
                       }}
                     />
-                    <span className="ml-2">{bn.batch_number} ({bn.rate} mtr)</span>
+                    <span className="ml-2">{bn.batch_number} ({bn.availableQty} mtr)</span>
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>

@@ -543,6 +543,7 @@ export type Database = {
           weaver_challan_id: number | null
           quality_name: string | null
           shorting_qty: number
+          weaver_challan_qty: number
           created_by: string | null
           created_at: string
           updated_at: string
@@ -554,6 +555,7 @@ export type Database = {
           weaver_challan_id?: number | null
           quality_name?: string | null
           shorting_qty: number
+          weaver_challan_qty?: number
           created_by?: string | null
           created_at?: string
           updated_at?: string
@@ -565,6 +567,7 @@ export type Database = {
           weaver_challan_id?: number | null
           quality_name?: string | null
           shorting_qty?: number
+          weaver_challan_qty?: number
           created_by?: string | null
           created_at?: string
           updated_at?: string

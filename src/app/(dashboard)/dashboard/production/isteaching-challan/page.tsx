@@ -7,6 +7,7 @@ import { IsteachingChallanContent } from '@/components/production/isteaching-cha
 type ShortingEntryWithChallan = {
   quality_name: string | null
   shorting_qty: number
+  weaver_challan_qty: number
   weaver_challans: {
     batch_number: string
   } | null
@@ -75,7 +76,7 @@ export default async function IsteachingChallanPage() {
   // Fetch shorting entries
   const { data: shortingEntries } = await supabase
     .from('shorting_entries')
-    .select('quality_name, shorting_qty, weaver_challans ( batch_number )')
+    .select('quality_name, shorting_qty, weaver_challan_qty, weaver_challans ( batch_number )')
 
   // Cast the fetched data to our specific type, then filter out any entries
   // that are missing the required data, ensuring type safety for the component.
@@ -84,6 +85,7 @@ export default async function IsteachingChallanPage() {
     .map(e => ({
       quality_name: e.quality_name!,
       shorting_qty: e.shorting_qty,
+      weaver_challan_qty: e.weaver_challan_qty,
       batch_number: e.weaver_challans!.batch_number,
     })) || []
 

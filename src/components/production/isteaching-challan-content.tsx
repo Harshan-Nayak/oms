@@ -62,7 +62,7 @@ interface IsteachingChallanContentProps {
   userRole: UserRole
   products: Product[]
   weaverChallans: WeaverChallan[]
-  shortingEntries: { quality_name: string, shorting_qty: number, batch_number: string }[]
+  shortingEntries: { quality_name: string, shorting_qty: number, weaver_challan_qty: number, batch_number: string }[]
 }
 
 export function IsteachingChallanContent({ 
