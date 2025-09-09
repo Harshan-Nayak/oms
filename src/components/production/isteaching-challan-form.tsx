@@ -127,10 +127,31 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
   const bottomQty = watch('bottom_qty')
   const bottomPcsQty = watch('bottom_pcs_qty')
   const currentStatus = watch('status')
+  const currentQuantity = watch('quantity')
 
   const topPcsCreated = topQty && topPcsQty ? Math.floor(topQty / topPcsQty) : 0
   const bottomPcsCreated = bottomQty && bottomPcsQty ? Math.floor(bottomQty / bottomPcsQty) : 0
   const totalProductQty = topPcsCreated + bottomPcsCreated
+
+  // Handle Top Qty constraint and auto-populate Bottom Qty
+  useEffect(() => {
+    if (topQty && currentQuantity) {
+      // Ensure Top Qty doesn't exceed main Quantity
+      if (topQty > currentQuantity) {
+        setValue('top_qty', currentQuantity)
+      }
+      
+      // Auto-populate Bottom Qty if Bottom is selected and there's remaining quantity
+      if (clothType?.includes('BOTTOM') && topQty <= currentQuantity) {
+        const remainingQty = currentQuantity - topQty
+        if (remainingQty > 0) {
+          setValue('bottom_qty', remainingQty)
+        } else {
+          setValue('bottom_qty', 0)
+        }
+      }
+    }
+  }, [topQty, currentQuantity, clothType, setValue])
 
   useEffect(() => {
     if (selectedQuality) {
@@ -396,9 +417,29 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
 
           <div className="space-y-2">
             <Label htmlFor="quantity">Enter Quantity *</Label>
-            <Input id="quantity" type="number" {...register('quantity', { valueAsNumber: true })} max={maxQuantity ?? undefined} />
+            <Input 
+              id="quantity" 
+              type="number" 
+              {...register('quantity', { valueAsNumber: true })} 
+              max={maxQuantity ?? undefined}
+              className={maxQuantity !== null && currentQuantity > maxQuantity ? 'border-red-500 focus:border-red-500' : ''}
+            />
             {errors.quantity && <p className="text-sm text-red-600">{errors.quantity.message}</p>}
-            {maxQuantity !== null && <p className="text-sm text-gray-500">Available: {maxQuantity}</p>}
+            {maxQuantity !== null && (
+              <div className="space-y-1">
+                <p className="text-sm text-gray-500">Available: {maxQuantity}</p>
+                {currentQuantity > maxQuantity && (
+                  <p className="text-sm text-red-600 font-medium">
+                    ⚠️ Quantity cannot exceed available stock of {maxQuantity}
+                  </p>
+                )}
+                {currentQuantity > 0 && currentQuantity <= maxQuantity && (
+                  <p className="text-sm text-green-600">
+                    ✓ Valid quantity ({maxQuantity - currentQuantity} remaining)
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -446,7 +487,19 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="top_qty">Enter Top Qty (mtr)</Label>
-                <Input id="top_qty" type="number" {...register('top_qty', { valueAsNumber: true })} />
+                <Input 
+                  id="top_qty" 
+                  type="number" 
+                  {...register('top_qty', { valueAsNumber: true })} 
+                  max={currentQuantity ?? undefined}
+                  className={currentQuantity && topQty && topQty > currentQuantity ? 'border-red-500 focus:border-red-500' : ''}
+                />
+                {currentQuantity && topQty && topQty > currentQuantity && (
+                  <p className="text-sm text-red-600">Top Qty cannot exceed main quantity of {currentQuantity}</p>
+                )}
+                {currentQuantity && (
+                  <p className="text-sm text-gray-500">Max: {currentQuantity}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="top_pcs_qty">Enter 1pcs Qty (mtr)</Label>
@@ -463,7 +516,16 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="bottom_qty">Enter Bottom Qty (mtr)</Label>
-                <Input id="bottom_qty" type="number" {...register('bottom_qty', { valueAsNumber: true })} />
+                <Input 
+                  id="bottom_qty" 
+                  type="number" 
+                  {...register('bottom_qty', { valueAsNumber: true })} 
+                  readOnly={topQty ? topQty > 0 : false}
+                  className={topQty && topQty > 0 ? 'bg-gray-100 cursor-not-allowed' : ''}
+                />
+                {topQty && topQty > 0 && (
+                  <p className="text-sm text-gray-500">Auto-calculated from remaining quantity</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="bottom_pcs_qty">Enter 1pcs Qty (mtr)</Label>
