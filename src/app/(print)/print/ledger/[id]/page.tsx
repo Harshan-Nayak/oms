@@ -31,7 +31,7 @@ async function getLedgerData(id: string) {
   // Fetch related transactions for passbook
   const { data: challans } = await supabase
     .from('weaver_challans')
-    .select('challan_no, challan_date, total_grey_mtr, quality_details')
+    .select('challan_no, challan_date, transport_charge, vendor_amount, sgst, cgst, igst')
     .eq('ledger_id', id)
 
   const { data: paymentVouchers } = await supabase

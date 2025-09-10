@@ -141,6 +141,7 @@ CREATE TABLE public.isteaching_challans (
   transport_name TEXT,
   lr_number TEXT,
   transport_charge DECIMAL(10,2),
+  selected_product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
   created_by UUID REFERENCES auth.users(id),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

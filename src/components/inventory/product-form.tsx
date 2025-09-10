@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useForm } from 'react-hook-form'
+import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { supabase } from '@/lib/supabase/client'
@@ -13,25 +13,39 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, Upload, X } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Loader2, Upload, X, Plus, Trash2 } from 'lucide-react'
 import { Database } from '@/types/database'
 import Image from 'next/image'
 import { useToast } from '@/hooks/use-toast'
 
 type Product = Database['public']['Tables']['products']['Insert']
 
+const sizeSchema = z.object({
+  size: z.string().min(1, 'Size is required'),
+  quantity: z.number().min(1, 'Quantity must be at least 1'),
+})
+
 const productSchema = z.object({
   product_name: z.string().min(1, 'Product name is required'),
   product_sku: z.string().min(1, 'SKU is required'),
   product_category: z.string().min(1, 'Category is required'),
   product_sub_category: z.string().optional(),
-  product_size: z.string().optional(),
+  product_size: z.array(sizeSchema).optional(),
   product_color: z.string().optional(),
   product_description: z.string().optional(),
   product_material: z.string().optional(),
   product_brand: z.string(),
   product_country: z.string(),
-  product_status: z.enum(['Active', 'Inactive']),
+  product_status: z.enum(['Active', 'Inactive', 'Pipeline']),
   product_qty: z.number().min(0),
   wash_care: z.string().optional(),
 })
@@ -53,12 +67,14 @@ export function ProductForm({ userId, product, isEdit = false }: ProductFormProp
   const [imagePreview, setImagePreview] = useState<string | null>(
     product?.product_image || null
   )
+  const [isAlertOpen, setIsAlertOpen] = useState(false)
 
   const {
     register,
     handleSubmit,
     setValue,
     watch,
+    control,
     formState: { errors },
   } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -67,31 +83,54 @@ export function ProductForm({ userId, product, isEdit = false }: ProductFormProp
       product_sku: product?.product_sku || '',
       product_category: product?.product_category || '',
       product_sub_category: product?.product_sub_category || '',
-      product_size: product?.product_size || '',
+      product_size: product?.product_size 
+        ? (typeof product.product_size === 'string' 
+            ? JSON.parse(product.product_size) 
+            : product.product_size)
+        : [{ size: 'S', quantity: 0 }],
       product_color: product?.product_color || '',
       product_description: product?.product_description || '',
       product_material: product?.product_material || '',
       product_brand: product?.product_brand || 'Bhaktinandan',
       product_country: product?.product_country || 'India',
-      product_status: (product?.product_status as 'Active' | 'Inactive') || 'Active',
+      product_status: (product?.product_status as 'Active' | 'Inactive' | 'Pipeline') || 'Active',
       product_qty: product?.product_qty || 0,
       wash_care: product?.wash_care || '',
     },
   })
 
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'product_size',
+  })
+
+  const productQty = watch('product_qty')
+  const productSizes = watch('product_size')
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      if (file.type.startsWith('image/')) {
-        setImageFile(file)
-        const reader = new FileReader()
-        reader.onload = (e) => {
-          setImagePreview(e.target?.result as string)
-        }
-        reader.readAsDataURL(file)
-      } else {
-        setError('Please select a valid image file')
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg']
+      if (!allowedTypes.includes(file.type)) {
+        setError('Invalid file type. Please select a JPG, JPEG, or PNG image.')
+        setIsAlertOpen(true)
+        return
       }
+
+      const maxSizeInMB = 3
+      if (file.size > maxSizeInMB * 1024 * 1024) {
+        setError(`File size exceeds ${maxSizeInMB}MB. Please choose a smaller file.`)
+        setIsAlertOpen(true)
+        return
+      }
+
+      setImageFile(file)
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+      setError('') // Clear any previous errors
     }
   }
 
@@ -130,6 +169,15 @@ export function ProductForm({ userId, product, isEdit = false }: ProductFormProp
     setLoading(true)
     setError('')
 
+    // Validate size quantities don't exceed product quantity
+    const totalSizeQty = data.product_size?.reduce((sum, s) => sum + s.quantity, 0) || 0
+    if (data.product_qty && totalSizeQty > data.product_qty) {
+      setError('Sum of size quantities cannot exceed Product Qty.')
+      setIsAlertOpen(true)
+      setLoading(false)
+      return
+    }
+
     try {
       let imageUrl = product?.product_image || null
 
@@ -138,6 +186,7 @@ export function ProductForm({ userId, product, isEdit = false }: ProductFormProp
         imageUrl = await uploadImage(imageFile)
         if (!imageUrl) {
           setError('Failed to upload image. Please try again.')
+          setIsAlertOpen(true)
           setLoading(false)
           return
         }
@@ -146,6 +195,7 @@ export function ProductForm({ userId, product, isEdit = false }: ProductFormProp
       const productData: Product = {
         ...data,
         product_image: imageUrl,
+        product_size: data.product_size ? JSON.stringify(data.product_size) : null,
         created_by: userId,
       }
 
@@ -188,66 +238,24 @@ export function ProductForm({ userId, product, isEdit = false }: ProductFormProp
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
+        <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Error</AlertDialogTitle>
+              <AlertDialogDescription>{error}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={() => setIsAlertOpen(false)}>OK</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
 
-      {/* Product Image */}
+      {/* Product Details - Enhanced */}
       <Card>
         <CardHeader>
-          <CardTitle>Product Image</CardTitle>
-          <CardDescription>Upload a high-quality product image</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {imagePreview ? (
-              <div className="relative w-48 h-48 border-2 border-dashed border-gray-300 rounded-lg">
-                <Image
-                  src={imagePreview}
-                  alt="Product preview"
-                  fill
-                  className="object-cover rounded-lg"
-                />
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  className="absolute -top-2 -right-2"
-                  onClick={removeImage}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : (
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                <div className="mt-2">
-                  <label htmlFor="image-upload" className="cursor-pointer">
-                    <span className="text-blue-600 hover:text-blue-500">
-                      Upload an image
-                    </span>
-                    <input
-                      id="image-upload"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleImageChange}
-                    />
-                  </label>
-                </div>
-                <p className="text-sm text-gray-500">PNG, JPG up to 1MB</p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Basic Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Basic Information</CardTitle>
-          <CardDescription>Enter the basic product details</CardDescription>
+          <CardTitle>Product Details</CardTitle>
+          <CardDescription>Enter comprehensive product information</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -264,7 +272,7 @@ export function ProductForm({ userId, product, isEdit = false }: ProductFormProp
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="product_sku">SKU *</Label>
+              <Label htmlFor="product_sku">Product SKU *</Label>
               <Input
                 id="product_sku"
                 {...register('product_sku')}
@@ -274,28 +282,79 @@ export function ProductForm({ userId, product, isEdit = false }: ProductFormProp
                 <p className="text-sm text-red-600">{errors.product_sku.message}</p>
               )}
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="product_description">Description</Label>
-            <Textarea
-              id="product_description"
-              {...register('product_description')}
-              placeholder="Enter product description"
-              rows={3}
-            />
-          </div>
-        </CardContent>
-      </Card>
+            <div className="space-y-2">
+              <Label htmlFor="product_description">Product Description</Label>
+              <Textarea
+                id="product_description"
+                {...register('product_description')}
+                placeholder="Enter product description"
+                rows={3}
+              />
+            </div>
 
-      {/* Categories and Attributes */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Categories and Attributes</CardTitle>
-          <CardDescription>Categorize and define product attributes</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Product Image</Label>
+              {imagePreview ? (
+                <div className="relative w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg">
+                  <Image
+                    src={imagePreview}
+                    alt="Product preview"
+                    fill
+                    className="object-cover rounded-lg"
+                    unoptimized
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute -top-2 -right-2"
+                    onClick={removeImage}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center w-32 h-32 flex flex-col items-center justify-center">
+                  <Upload className="h-8 w-8 text-gray-400" />
+                  <label htmlFor="image-upload" className="cursor-pointer">
+                    <span className="text-blue-600 hover:text-blue-500 text-sm">
+                      Upload
+                    </span>
+                    <input
+                      id="image-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageChange}
+                    />
+                  </label>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="product_qty">Product Qty *</Label>
+              <Input
+                id="product_qty"
+                type="number"
+                {...register('product_qty', { valueAsNumber: true })}
+                placeholder="0"
+              />
+              {errors.product_qty && (
+                <p className="text-sm text-red-600">{errors.product_qty.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="product_color">Product Color</Label>
+              <Input
+                id="product_color"
+                {...register('product_color')}
+                placeholder="e.g. Red, Blue"
+              />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="product_category">Category *</Label>
               <Input
@@ -318,24 +377,6 @@ export function ProductForm({ userId, product, isEdit = false }: ProductFormProp
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="product_color">Color</Label>
-              <Input
-                id="product_color"
-                {...register('product_color')}
-                placeholder="e.g. Red, Blue"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="product_size">Size</Label>
-              <Input
-                id="product_size"
-                {...register('product_size')}
-                placeholder="e.g. Free Size, M, L"
-              />
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="product_material">Material</Label>
               <Input
                 id="product_material"
@@ -345,26 +386,31 @@ export function ProductForm({ userId, product, isEdit = false }: ProductFormProp
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="product_qty">Quantity</Label>
-              <Input
-                id="product_qty"
-                type="number"
-                {...register('product_qty', { valueAsNumber: true })}
-                placeholder="0"
-              />
+              <Label htmlFor="product_status">Status</Label>
+              <Select
+                value={watch('product_status')}
+                onValueChange={(value) => setValue('product_status', value as 'Active' | 'Inactive' | 'Pipeline')}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className='bg-white'>
+                  {productQty === 0 ? (
+                    <>
+                      <SelectItem value="Inactive">Inactive</SelectItem>
+                      <SelectItem value="Pipeline">Pipeline</SelectItem>
+                    </>
+                  ) : (
+                    <>
+                      <SelectItem value="Active">Active</SelectItem>
+                      <SelectItem value="Inactive">Inactive</SelectItem>
+                      <SelectItem value="Pipeline">Pipeline</SelectItem>
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Additional Details */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Additional Details</CardTitle>
-          <CardDescription>Brand, origin, and care instructions</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="product_brand">Brand</Label>
               <Input
@@ -375,7 +421,7 @@ export function ProductForm({ userId, product, isEdit = false }: ProductFormProp
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="product_country">Country</Label>
+              <Label htmlFor="product_country">Made In</Label>
               <Input
                 id="product_country"
                 {...register('product_country')}
@@ -384,31 +430,67 @@ export function ProductForm({ userId, product, isEdit = false }: ProductFormProp
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="product_status">Status</Label>
-              <Select
-                value={watch('product_status')}
-                onValueChange={(value) => setValue('product_status', value as 'Active' | 'Inactive')}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Active">Active</SelectItem>
-                  <SelectItem value="Inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="wash_care">Wash Care Instructions</Label>
+              <Textarea
+                id="wash_care"
+                {...register('wash_care')}
+                placeholder="Enter care instructions"
+                rows={2}
+              />
             </div>
           </div>
+        </CardContent>
+      </Card>
 
-          <div className="space-y-2">
-            <Label htmlFor="wash_care">Wash Care Instructions</Label>
-            <Textarea
-              id="wash_care"
-              {...register('wash_care')}
-              placeholder="Enter care instructions"
-              rows={2}
-            />
-          </div>
+      {/* Product Size */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Product Size</CardTitle>
+          <CardDescription>Define different sizes and their quantities</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {fields.map((field, index) => (
+            <div key={field.id} className="flex items-center gap-4">
+              <Select
+                onValueChange={(value) => setValue(`product_size.${index}.size`, value)}
+                defaultValue={field.size}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select size" />
+                </SelectTrigger>
+                <SelectContent className='bg-white'>
+                  {['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'Free Size'].map(s => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                type="number"
+                {...register(`product_size.${index}.quantity`, { valueAsNumber: true })}
+                placeholder="Quantity"
+              />
+              {fields.length > 1 && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  onClick={() => remove(index)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          ))}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => append({ size: 'M', quantity: 0 })}
+          >
+            <Plus className="h-4 w-4 mr-2" /> Add Size
+          </Button>
+          {productQty && productSizes && productSizes.reduce((sum, s) => sum + s.quantity, 0) > productQty && (
+            <p className="text-sm text-red-600">Total size quantity exceeds product quantity.</p>
+          )}
         </CardContent>
       </Card>
 

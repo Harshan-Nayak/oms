@@ -17,6 +17,7 @@ import Image from 'next/image'
 
 type IsteachingChallan = Tables<'isteaching_challans'> & {
   ledgers: Tables<'ledgers'> | null
+  products: Tables<'products'> | null
 };
 
 interface IsteachingChallanDetailPageProps {
@@ -59,6 +60,22 @@ export default async function IsteachingChallanDetailPage({ params }: Isteaching
         city,
         state,
         gst_number
+      ),
+      products (
+        id,
+        product_name,
+        product_sku,
+        product_category,
+        product_sub_category,
+        product_color,
+        product_material,
+        product_brand,
+        product_country,
+        product_description,
+        product_image,
+        product_qty,
+        product_status,
+        wash_care
       )
     `)
     .eq('id', resolvedParams.id)
@@ -239,60 +256,151 @@ export default async function IsteachingChallanDetailPage({ params }: Isteaching
               </CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {isteachingChallan.product_image && (
-                <div className="col-span-full">
-                  <label className="text-sm font-medium text-gray-700">Product Image</label>
-                  <div className="mt-2">
-                    <Image src={isteachingChallan.product_image} alt="Product Image" width={200} height={200} className="rounded-lg" />
+              {/* Show selected product details if available */}
+              {isteachingChallan.products ? (
+                <>
+                  <div className="col-span-full mb-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-blue-700 bg-blue-100 px-3 py-1 rounded-full">
+                        ✓ Selected Product Details
+                      </span>
+                    </div>
                   </div>
-                </div>
+                  {isteachingChallan.products.product_image && (
+                    <div className="col-span-full">
+                      <label className="text-sm font-medium text-gray-700">Product Image</label>
+                      <div className="mt-2">
+                        <Image 
+                          src={isteachingChallan.products.product_image} 
+                          alt="Product Image" 
+                          width={200} 
+                          height={200} 
+                          className="rounded-lg" 
+                        />
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Product Name</label>
+                    <p className="text-gray-900">{isteachingChallan.products.product_name}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Product SKU</label>
+                    <p className="text-gray-900">{isteachingChallan.products.product_sku}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Available Quantity</label>
+                    <p className="text-gray-900">{isteachingChallan.products.product_qty || 0}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Product Color</label>
+                    <p className="text-gray-900">{isteachingChallan.products.product_color || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Category</label>
+                    <p className="text-gray-900">{isteachingChallan.products.product_category}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Sub Category</label>
+                    <p className="text-gray-900">{isteachingChallan.products.product_sub_category || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Status</label>
+                    <p className="text-gray-900">{isteachingChallan.products.product_status || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Brand</label>
+                    <p className="text-gray-900">{isteachingChallan.products.product_brand || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Made In</label>
+                    <p className="text-gray-900">{isteachingChallan.products.product_country || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Material</label>
+                    <p className="text-gray-900">{isteachingChallan.products.product_material || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Wash Care</label>
+                    <p className="text-gray-900">{isteachingChallan.products.wash_care || 'N/A'}</p>
+                  </div>
+                  <div className="col-span-full">
+                    <label className="text-sm font-medium text-gray-700">Product Description</label>
+                    <p className="text-gray-900">{isteachingChallan.products.product_description || 'N/A'}</p>
+                  </div>
+                </>
+              ) : (
+                /* Fallback to challan's stored product details if no selected product */
+                <>
+                  <div className="col-span-full mb-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                        ℹ️ No Product Selected - Manual Entry
+                      </span>
+                    </div>
+                  </div>
+                  {isteachingChallan.product_image && (
+                    <div className="col-span-full">
+                      <label className="text-sm font-medium text-gray-700">Product Image</label>
+                      <div className="mt-2">
+                        <Image src={isteachingChallan.product_image} alt="Product Image" width={200} height={200} className="rounded-lg" />
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Product Name</label>
+                    <p className="text-gray-900">{isteachingChallan.product_name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Product SKU</label>
+                    <p className="text-gray-900">{isteachingChallan.product_sku || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Product Quantity</label>
+                    <p className="text-gray-900">{isteachingChallan.product_qty || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Product Color</label>
+                    <p className="text-gray-900">{isteachingChallan.product_color || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Category</label>
+                    <p className="text-gray-900">{isteachingChallan.category || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Sub Category</label>
+                    <p className="text-gray-900">{isteachingChallan.sub_category || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Status</label>
+                    <p className="text-gray-900">{isteachingChallan.status || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Brand</label>
+                    <p className="text-gray-900">{isteachingChallan.brand || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Made In</label>
+                    <p className="text-gray-900">{isteachingChallan.made_in || 'N/A'}</p>
+                  </div>
+                  <div className="col-span-full">
+                    <label className="text-sm font-medium text-gray-700">Product Description</label>
+                    <p className="text-gray-900">{isteachingChallan.product_description || 'N/A'}</p>
+                  </div>
+                </>
               )}
-              <div>
-                <label className="text-sm font-medium text-gray-700">Product Name</label>
-                <p className="text-gray-900">{isteachingChallan.product_name || 'N/A'}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Product SKU</label>
-                <p className="text-gray-900">{isteachingChallan.product_sku || 'N/A'}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Product Quantity</label>
-                <p className="text-gray-900">{isteachingChallan.product_qty || 'N/A'}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Product Color</label>
-                <p className="text-gray-900">{isteachingChallan.product_color || 'N/A'}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Category</label>
-                <p className="text-gray-900">{isteachingChallan.category || 'N/A'}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Sub Category</label>
-                <p className="text-gray-900">{isteachingChallan.sub_category || 'N/A'}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Status</label>
-                <p className="text-gray-900">{isteachingChallan.status || 'N/A'}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Brand</label>
-                <p className="text-gray-900">{isteachingChallan.brand || 'N/A'}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Made In</label>
-                <p className="text-gray-900">{isteachingChallan.made_in || 'N/A'}</p>
-              </div>
-              <div className="col-span-full">
-                <label className="text-sm font-medium text-gray-700">Product Description</label>
-                <p className="text-gray-900">{isteachingChallan.product_description || 'N/A'}</p>
-              </div>
+              
+              {/* Show selected sizes */}
               {sizeDetails.length > 0 && (
                 <div className="col-span-full">
-                  <label className="text-sm font-medium text-gray-700">Product Sizes</label>
-                  <ul>
-                    {sizeDetails.map((s, i) => <li key={i}>{s.size}: {s.quantity}</li>)}
-                  </ul>
+                  <label className="text-sm font-medium text-gray-700">Selected Sizes</label>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {sizeDetails.map((s, i) => (
+                      <div key={i} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                        {s.size}: {s.quantity} pcs
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </CardContent>

@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,22 +26,22 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { LedgerSelectModal } from './ledger-select-modal'
-import { Loader2, Plus, Trash2, Upload, X } from 'lucide-react'
+import { ProductSelectModal } from './product-select-modal'
+import { Loader2, Plus, Trash2 } from 'lucide-react'
 import { Database, Json } from '@/types/database'
 import { useToast } from '@/hooks/use-toast'
-import Image from 'next/image'
 import { Checkbox } from '@/components/ui/checkbox'
 
 type Ledger = Database['public']['Tables']['ledgers']['Row']
+type Product = Database['public']['Tables']['products']['Row']
 type Quality = { product_name: string }
 type BatchNumber = { batch_number: string, quality_details: Json }
 type IsteachingChallan = Database['public']['Tables']['isteaching_challans']['Insert']
-type Product = { product_name: string, product_qty: number | null }
 type WeaverChallan = { quality_details: Json, batch_number: string }
 
 const sizeSchema = z.object({
   size: z.string().min(1, 'Size is required'),
-  quantity: z.number().min(1, 'Quantity must be at least 1'),
+  quantity: z.number().min(0, 'Quantity must be at least 0'),
 })
 
 const isteachingChallanSchema = z.object({
@@ -51,17 +50,8 @@ const isteachingChallanSchema = z.object({
   quality: z.string().min(1, 'Quality is required'),
   batch_number: z.array(z.string()).min(1, 'At least one batch number is required'),
   quantity: z.number().min(1, 'Quantity must be at least 1'),
-  product_name: z.string().optional(),
-  product_description: z.string().optional(),
-  product_sku: z.string().optional(),
-  product_qty: z.number().min(0).optional(),
-  product_color: z.string().optional(),
-  product_size: z.array(sizeSchema).optional(),
-  category: z.string().optional(),
-  sub_category: z.string().optional(),
-  status: z.enum(['Active', 'Inactive', 'Pipeline']).optional(),
-  brand: z.string().optional(),
-  made_in: z.string().optional(),
+  selected_product_id: z.number().optional(),
+  selected_sizes: z.array(sizeSchema).optional(),
   transport_name: z.string().optional(),
   lr_number: z.string().optional(),
   transport_charge: z.number().min(0).optional(),
@@ -90,9 +80,9 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [selectedLedger, setSelectedLedger] = useState<Ledger | null>(null)
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [availableSizes, setAvailableSizes] = useState<{ size: string; quantity: number }[]>([])
   const [filteredBatchNumbers, setFilteredBatchNumbers] = useState<{ batch_number: string, availableQty: number }[]>([])
-  const [productImageFile, setProductImageFile] = useState<File | null>(null)
-  const [productImagePreview, setProductImagePreview] = useState<string | null>(null)
   const [isAlertOpen, setIsAlertOpen] = useState(false)
   const [maxQuantity, setMaxQuantity] = useState<number | null>(null)
 
@@ -107,26 +97,25 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
     resolver: zodResolver(isteachingChallanSchema),
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
-      product_size: [{ size: 'S', quantity: 0 }],
       batch_number: [],
+      selected_sizes: [{ size: 'M', quantity: 0 }],
     },
   })
 
   const { fields, append, remove } = useFieldArray({
     control,
-    name: 'product_size',
+    name: 'selected_sizes',
   })
 
   const selectedQuality = watch('quality')
-  const productQty = watch('product_qty')
-  const productSizes = watch('product_size')
   const selectedBatchNumbers = watch('batch_number')
+  const selectedProductId = watch('selected_product_id')
+  const selectedSizes = watch('selected_sizes')
   const clothType = watch('cloth_type')
   const topQty = watch('top_qty')
   const topPcsQty = watch('top_pcs_qty')
   const bottomQty = watch('bottom_qty')
   const bottomPcsQty = watch('bottom_pcs_qty')
-  const currentStatus = watch('status')
   const currentQuantity = watch('quantity')
 
   const topPcsCreated = topQty && topPcsQty ? Math.floor(topQty / topPcsQty) : 0
@@ -153,6 +142,31 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
     }
   }, [topQty, currentQuantity, clothType, setValue])
 
+  // Handle product selection and available sizes
+  useEffect(() => {
+    if (selectedProductId) {
+      const product = products.find(p => p.id === selectedProductId)
+      setSelectedProduct(product || null)
+      
+      if (product?.product_size) {
+        try {
+          const sizes = typeof product.product_size === 'string' 
+            ? JSON.parse(product.product_size)
+            : product.product_size
+          setAvailableSizes(Array.isArray(sizes) ? sizes : [])
+        } catch (error) {
+          console.error('Error parsing product sizes:', error)
+          setAvailableSizes([])
+        }
+      } else {
+        setAvailableSizes([])
+      }
+    } else {
+      setSelectedProduct(null)
+      setAvailableSizes([])
+    }
+  }, [selectedProductId, products])
+
   useEffect(() => {
     if (selectedQuality) {
       // Calculate total weaver challan quantity from shorting entries for the selected quality
@@ -171,64 +185,6 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
       setMaxQuantity(null)
     }
   }, [selectedQuality, shortingEntries])
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg']
-      if (!allowedTypes.includes(file.type)) {
-        setError('Invalid file type. Please select a JPG, JPEG, or PNG image.')
-        setIsAlertOpen(true)
-        return
-      }
-
-      const maxSizeInMB = 3
-      if (file.size > maxSizeInMB * 1024 * 1024) {
-        setError(`File size exceeds ${maxSizeInMB}MB. Please choose a smaller file.`)
-        setIsAlertOpen(true)
-        return
-      }
-
-      setProductImageFile(file)
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setProductImagePreview(e.target?.result as string)
-      }
-      reader.readAsDataURL(file)
-      setError('') // Clear any previous errors
-    }
-  }
-
-  const removeImage = () => {
-    setProductImageFile(null)
-    setProductImagePreview(null)
-  }
-
-  const uploadImage = async (file: File): Promise<string | null> => {
-    try {
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
-      const filePath = `product-images/${fileName}`
-
-      const { error: uploadError } = await supabase.storage
-        .from('product-images')
-        .upload(filePath, file)
-
-      if (uploadError) {
-        console.error('Upload error:', uploadError)
-        return null
-      }
-
-      const { data } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(filePath)
-
-      return data.publicUrl
-    } catch (error) {
-      console.error('Error uploading image:', error)
-      return null
-    }
-  }
 
   useEffect(() => {
     if (selectedQuality) {
@@ -250,6 +206,27 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
     setValue('ledger_id', ledgerId)
   }
 
+  const handleProductSelect = (productId: number) => {
+    setValue('selected_product_id', productId)
+    // Reset selected sizes when product changes
+    setValue('selected_sizes', [{ size: 'M', quantity: 0 }])
+  }
+
+  // Custom validation for size quantities
+  const validateSizeQuantity = (value: number, sizeIndex: number) => {
+    const selectedSize = selectedSizes?.[sizeIndex]
+    if (!selectedSize) return true
+    
+    const availableSize = availableSizes.find(s => s.size === selectedSize.size)
+    if (!availableSize) return true
+    
+    if (value > availableSize.quantity) {
+      return `Quantity cannot exceed ${availableSize.quantity} for size ${selectedSize.size}`
+    }
+    
+    return true
+  }
+
   const onSubmit = async (data: IsteachingChallanFormData) => {
     setLoading(true)
     setError('')
@@ -261,26 +238,31 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
       return
     }
 
-    const totalSizeQty = data.product_size?.reduce((sum, s) => sum + s.quantity, 0) || 0
-    if (data.product_qty && totalSizeQty > data.product_qty) {
-      setError('Sum of size quantities cannot exceed Product Qty.')
-      setIsAlertOpen(true)
-      setLoading(false)
-      return
-    }
+    // Validate selected sizes don't exceed available quantities
+    if (data.selected_sizes && availableSizes.length > 0) {
+      const totalSelectedQty = data.selected_sizes.reduce((sum, s) => sum + s.quantity, 0)
+      const maxAvailableQty = availableSizes.reduce((sum, s) => sum + s.quantity, 0)
+      
+      if (totalSelectedQty > maxAvailableQty) {
+        setError(`Selected quantities (${totalSelectedQty}) cannot exceed available stock (${maxAvailableQty}).`)
+        setIsAlertOpen(true)
+        setLoading(false)
+        return
+      }
 
-    try {
-      let imageUrl: string | null = null
-      if (productImageFile) {
-        imageUrl = await uploadImage(productImageFile)
-        if (!imageUrl) {
-          setError('Failed to upload image. Please try again.')
+      // Validate individual size quantities
+      for (const selectedSize of data.selected_sizes) {
+        const availableSize = availableSizes.find(s => s.size === selectedSize.size)
+        if (availableSize && selectedSize.quantity > availableSize.quantity) {
+          setError(`Quantity for size ${selectedSize.size} (${selectedSize.quantity}) cannot exceed available stock (${availableSize.quantity}).`)
           setIsAlertOpen(true)
           setLoading(false)
           return
         }
       }
+    }
 
+    try {
       const today = new Date()
       const dateStr = today.toISOString().split('T')[0].replace(/-/g, '')
       const challanPrefix = `SVH-CH-${dateStr}-`
@@ -301,15 +283,20 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
       const challanData: IsteachingChallan = {
         ...data,
         challan_no: challanNumber,
-        product_image: imageUrl,
         transport_name: data.transport_name || null,
         lr_number: data.lr_number || null,
         transport_charge: data.transport_charge || null,
+        selected_product_id: data.selected_product_id || null,
+        // Store selected product and sizes as JSON if they exist
+        product_size: data.selected_sizes ? JSON.stringify(data.selected_sizes) : null,
       }
+
+      // Remove the new fields that aren't in the database schema
+      const { selected_sizes, ...finalChallanData } = challanData as typeof challanData & { selected_sizes?: unknown }
 
       const { error: insertError } = await supabase
         .from('isteaching_challans')
-        .insert([challanData])
+        .insert([finalChallanData])
 
       if (insertError) {
         setError('Failed to create challan. Please try again.')
@@ -545,143 +532,149 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
         </CardContent>
       </Card>
 
+      {/* Product Selection */}
       <Card>
         <CardHeader>
-          <CardTitle>Product Details</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="product_name">Product Name</Label>
-            <Input id="product_name" {...register('product_name')} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="product_description">Product Description</Label>
-            <Textarea id="product_description" {...register('product_description')} />
-          </div>
-          <div className="space-y-2">
-            <Label>Product Image</Label>
-            {productImagePreview ? (
-              <div className="relative w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg">
-                <Image
-                  src={productImagePreview}
-                  alt="Product preview"
-                  fill
-                  className="object-cover rounded-lg"
-                  unoptimized
-                />
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  className="absolute -top-2 -right-2"
-                  onClick={removeImage}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : (
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center w-32 h-32 flex flex-col items-center justify-center">
-                <Upload className="h-8 w-8 text-gray-400" />
-                <label htmlFor="image-upload" className="cursor-pointer">
-                  <span className="text-blue-600 hover:text-blue-500 text-sm">
-                    Upload
-                  </span>
-                  <input
-                    id="image-upload"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleImageChange}
-                  />
-                </label>
-              </div>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="product_sku">Product SKU</Label>
-            <Input id="product_sku" {...register('product_sku')} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="product_qty">Product Qty</Label>
-            <Input id="product_qty" type="number" {...register('product_qty', { valueAsNumber: true })} />
-            {errors.product_qty && <p className="text-sm text-red-600">{errors.product_qty.message}</p>}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="product_color">Product Color</Label>
-            <Input id="product_color" {...register('product_color')} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="category">Category</Label>
-            <Input id="category" {...register('category')} placeholder="Enter category" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="sub_category">Sub Category</Label>
-            <Input id="sub_category" {...register('sub_category')} placeholder="Enter sub category" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="status">Status</Label>
-            <Select onValueChange={(value) => setValue('status', value as 'Active' | 'Inactive' | 'Pipeline')} defaultValue="Active">
-              <SelectTrigger>
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent className='bg-white'>
-                {productQty === 0 ? (
-                  <>
-                    <SelectItem value="Inactive">Inactive</SelectItem>
-                    <SelectItem value="Pipeline">Pipeline</SelectItem>
-                  </>
-                ) : (
-                  <>
-                    <SelectItem value="Active">Active</SelectItem>
-                    <SelectItem value="Inactive">Inactive</SelectItem>
-                    <SelectItem value="Pipeline">Pipeline</SelectItem>
-                  </>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="brand">Brand</Label>
-            <Input id="brand" {...register('brand')} placeholder="Enter brand" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="made_in">Made In</Label>
-            <Input id="made_in" {...register('made_in')} placeholder="Enter manufacturing location" />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Product Size</CardTitle>
+          <CardTitle>Product Selection</CardTitle>
+          <CardDescription>Select a product for this challan (optional)</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {fields.map((field, index) => (
-            <div key={field.id} className="flex items-center gap-4">
-              <Select onValueChange={(value) => setValue(`product_size.${index}.size`, value)} defaultValue={field.size}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select size" />
-                </SelectTrigger>
-                <SelectContent className='bg-white'>
-                  {['S', 'M', 'L', 'XL', 'XXL'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Input type="number" {...register(`product_size.${index}.quantity`, { valueAsNumber: true })} placeholder="Quantity" />
-              {fields.length > 1 && (
-                <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+          <div className="space-y-2">
+            <Label htmlFor="selected_product">Select Product</Label>
+            <ProductSelectModal products={products} onProductSelect={handleProductSelect}>
+              <Button type="button" variant="outline" className="w-full justify-start">
+                {selectedProduct ? (
+                  <div className="flex items-center space-x-2">
+                    <span>{selectedProduct.product_name}</span>
+                    <span className="text-sm text-gray-500">({selectedProduct.product_sku})</span>
+                  </div>
+                ) : (
+                  '-- Select Product --'
+                )}
+              </Button>
+            </ProductSelectModal>
+          </div>
+          
+          {selectedProduct && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 p-4 bg-gray-50 rounded-lg">
+              <div className="space-y-1">
+                <span className="text-sm font-medium text-gray-700">Category:</span>
+                <p className="text-sm">{selectedProduct.product_category}</p>
+              </div>
+              <div className="space-y-1">
+                <span className="text-sm font-medium text-gray-700">Available Qty:</span>
+                <p className="text-sm">{selectedProduct.product_qty || 0}</p>
+              </div>
+              <div className="space-y-1">
+                <span className="text-sm font-medium text-gray-700">Color:</span>
+                <p className="text-sm">{selectedProduct.product_color || 'N/A'}</p>
+              </div>
+              <div className="space-y-1">
+                <span className="text-sm font-medium text-gray-700">Material:</span>
+                <p className="text-sm">{selectedProduct.product_material || 'N/A'}</p>
+              </div>
+              {selectedProduct.product_description && (
+                <div className="space-y-1 md:col-span-2">
+                  <span className="text-sm font-medium text-gray-700">Description:</span>
+                  <p className="text-sm">{selectedProduct.product_description}</p>
+                </div>
               )}
             </div>
-          ))}
-          <Button type="button" variant="outline" onClick={() => append({ size: 'S', quantity: 0 })}>
-            <Plus className="h-4 w-4 mr-2" /> Add Size
-          </Button>
-          {productQty && productSizes && productSizes.reduce((sum, s) => sum + s.quantity, 0) > productQty && (
-            <p className="text-sm text-red-600">Total size quantity exceeds product quantity.</p>
           )}
         </CardContent>
       </Card>
+
+      {/* Size Selection */}
+      {selectedProduct && availableSizes.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Size Selection</CardTitle>
+            <CardDescription>Select sizes and quantities from available options</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="mb-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Available Sizes:</h4>
+              <div className="flex flex-wrap gap-2">
+                {availableSizes.map((size, index) => (
+                  <div key={index} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                    {size.size}: {size.quantity} pcs
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              {fields.map((field, index) => (
+                <div key={field.id} className="flex items-center gap-4">
+                  <Select
+                    onValueChange={(value) => setValue(`selected_sizes.${index}.size`, value)}
+                    defaultValue={field.size}
+                  >
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Select size" />
+                    </SelectTrigger>
+                    <SelectContent className='bg-white'>
+                      {availableSizes.map(size => (
+                        <SelectItem key={size.size} value={size.size}>
+                          {size.size} ({size.quantity} available)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex-1">
+                    <Input
+                      type="number"
+                      {...register(`selected_sizes.${index}.quantity`, { 
+                        valueAsNumber: true,
+                        validate: (value) => {
+                          if (value < 0) return 'Quantity must be at least 0'
+                          return validateSizeQuantity(value, index)
+                        }
+                      })}
+                      placeholder="Quantity"
+                      max={availableSizes.find(s => s.size === field.size)?.quantity || 0}
+                      min="0"
+                      className="w-32"
+                    />
+                    {errors.selected_sizes?.[index]?.quantity && (
+                      <p className="text-sm text-red-600 mt-1">
+                        {errors.selected_sizes[index]?.quantity?.message}
+                      </p>
+                    )}
+                  </div>
+                  {fields.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      onClick={() => remove(index)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+              
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => append({ size: availableSizes[0]?.size || 'M', quantity: 0 })}
+                disabled={availableSizes.length === 0}
+              >
+                <Plus className="h-4 w-4 mr-2" /> Add Size
+              </Button>
+              
+              {selectedSizes && selectedSizes.length > 0 && (
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                  <span className="text-sm font-medium text-blue-800">
+                    Total Selected: {selectedSizes.reduce((sum, s) => sum + s.quantity, 0)} pcs
+                  </span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Transport Details */}
       <Card>
@@ -721,6 +714,7 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
         </CardContent>
       </Card>
 
+      {/* Form Actions */}
       <div className="flex items-center gap-4">
         <Button type="submit" disabled={loading}>
           {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Create Challan'}

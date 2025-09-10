@@ -10,7 +10,7 @@ type PaymentVoucher = Tables<'payment_vouchers'>
 
 interface LedgerData {
   ledger: Ledger
-  challans: Pick<WeaverChallan, 'challan_no' | 'challan_date' | 'total_grey_mtr' | 'quality_details'>[]
+  challans: Pick<WeaverChallan, 'challan_no' | 'challan_date' | 'transport_charge' | 'vendor_amount' | 'sgst' | 'cgst' | 'igst'>[]
   paymentVouchers: Pick<PaymentVoucher, 'id' | 'date' | 'payment_for' | 'payment_type' | 'amount'>[]
 }
 
@@ -32,19 +32,29 @@ export default function PrintLedgerClient({ ledgerData }: { ledgerData: LedgerDa
     const processTransactions = () => {
       let allTransactions: Omit<Transaction, 'balance'>[] = []
 
-      // Process challans
+      // Process challans - now using transport_charge + vendor_amount (including GST)
       const challanTransactions = ledgerData.challans.map(c => {
-        let rate = 0
-        if (c.quality_details && Array.isArray(c.quality_details) && c.quality_details.length > 0) {
-          const firstItem = c.quality_details[0] as { rate?: number }
-          rate = firstItem.rate || 0
-        }
-        const amount = c.total_grey_mtr * rate
+        // Calculate GST amounts based on vendor_amount
+        const calculateGSTAmount = (percentage: string | undefined | null, baseAmount: number) => {
+          if (!percentage || percentage === 'Not Applicable') return 0;
+          const rate = parseFloat(percentage.replace('%', '')) / 100;
+          return baseAmount * rate;
+        };
+        
+        // Use vendor_amount as the base amount for GST calculation
+        const baseAmount = c.vendor_amount || 0;
+        const sgstAmount = calculateGSTAmount(c.sgst, baseAmount);
+        const cgstAmount = calculateGSTAmount(c.cgst, baseAmount);
+        const igstAmount = calculateGSTAmount(c.igst, baseAmount);
+        const vendorAmountWithGST = baseAmount + sgstAmount + cgstAmount + igstAmount;
+        const transportCharge = c.transport_charge || 0;
+        const totalCredit = transportCharge + vendorAmountWithGST;
+        
         return {
           date: c.challan_date,
           detail: 'Weaver Challan',
           remark: c.challan_no,
-          credit: amount,
+          credit: totalCredit,
           debit: 0,
         }
       })

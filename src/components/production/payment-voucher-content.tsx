@@ -156,7 +156,7 @@ export function PaymentVoucherContent({
     payment_type: 'Credit',
     amount: '',
     transaction_to_settle: '',
-    sgst: 'Not Applicable',
+    sgst: '2.5%', // Default to 2.5% since SGST is compulsory
     cgst: 'Not Applicable',
     igst: 'Not Applicable'
   });
@@ -200,10 +200,21 @@ type QualityDetail = {
   };
 
   const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setFormData(prev => {
+      const newData = {
+        ...prev,
+        [field]: value
+      };
+      
+      // GST validation logic - when CGST is selected, clear IGST and vice versa
+      if (field === 'cgst' && value !== 'Not Applicable') {
+        newData.igst = 'Not Applicable';
+      } else if (field === 'igst' && value !== 'Not Applicable') {
+        newData.cgst = 'Not Applicable';
+      }
+      
+      return newData;
+    });
     
     // If payment type changes, reset transaction selection and reload transactions
     if (field === 'payment_type' && formData.ledger_id) {
@@ -212,10 +223,17 @@ type QualityDetail = {
     }
   };
 
-  const filteredStitchingChallans = stitchingChallans.filter(challan =>
-    challan.challan_no.toLowerCase().includes(challanSearchTerm.toLowerCase()) ||
-    challan.quality.toLowerCase().includes(challanSearchTerm.toLowerCase())
-  );
+  const filteredStitchingChallans = stitchingChallans.filter(challan => {
+    // Filter by selected ledger first
+    const matchesLedger = !formData.ledger_id || challan.ledger_id === formData.ledger_id;
+    
+    // Then filter by search term
+    const matchesSearch = !challanSearchTerm || 
+      challan.challan_no.toLowerCase().includes(challanSearchTerm.toLowerCase()) ||
+      challan.quality.toLowerCase().includes(challanSearchTerm.toLowerCase());
+    
+    return matchesLedger && matchesSearch;
+  });
 
   // Function to fetch available transactions for settlement
   const fetchAvailableTransactions = async (ledgerId: string, paymentType: string) => {
@@ -351,6 +369,27 @@ type QualityDetail = {
       return false;
     }
     
+    // GST Validation Rules
+    // SGST is compulsory
+    if (formData.sgst === 'Not Applicable') {
+      showToast('SGST is compulsory and cannot be "Not Applicable"', 'error');
+      return false;
+    }
+    
+    // Either CGST or IGST should be chosen, but not both
+    const hasCGST = formData.cgst !== 'Not Applicable';
+    const hasIGST = formData.igst !== 'Not Applicable';
+    
+    if (hasCGST && hasIGST) {
+      showToast('You cannot select both CGST and IGST. Please choose either CGST or IGST', 'error');
+      return false;
+    }
+    
+    if (!hasCGST && !hasIGST) {
+      showToast('Please select either CGST or IGST', 'error');
+      return false;
+    }
+    
     return true;
   };
 
@@ -384,7 +423,7 @@ type QualityDetail = {
         payment_type: 'Credit',
         amount: '',
         transaction_to_settle: '',
-        sgst: 'Not Applicable',
+        sgst: '2.5%', // Default to 2.5% since SGST is compulsory
         cgst: 'Not Applicable',
         igst: 'Not Applicable'
       });
@@ -563,13 +602,12 @@ type QualityDetail = {
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="sgst">SGST</Label>
+                    <Label htmlFor="sgst">SGST <span className="text-red-500">*</span></Label>
                     <Select value={formData.sgst} onValueChange={(value) => handleChange('sgst', value)}>
-                      <SelectTrigger>
+                      <SelectTrigger className={formData.sgst === 'Not Applicable' ? 'border-red-300 bg-red-50' : ''}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-white">
-                        <SelectItem value="Not Applicable">Not Applicable</SelectItem>
                         <SelectItem value="2.5%">2.5%</SelectItem>
                         <SelectItem value="5%">5%</SelectItem>
                         <SelectItem value="6%">6%</SelectItem>
@@ -578,48 +616,57 @@ type QualityDetail = {
                         <SelectItem value="18%">18%</SelectItem>
                       </SelectContent>
                     </Select>
+                    {formData.sgst === 'Not Applicable' && (
+                      <p className="text-xs text-red-500">SGST is compulsory</p>
+                    )}
                     {gstCalculation.sgstAmount > 0 && (
                       <p className="text-xs text-gray-500">₹{gstCalculation.sgstAmount.toFixed(2)}</p>
                     )}
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="cgst">CGST</Label>
+                    <Label htmlFor="cgst">CGST <span className="text-sm text-gray-500">(Either CGST or IGST)</span></Label>
                     <Select value={formData.cgst} onValueChange={(value) => handleChange('cgst', value)}>
-                      <SelectTrigger>
+                      <SelectTrigger className={formData.igst !== 'Not Applicable' ? 'opacity-50 cursor-not-allowed' : ''}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-white">
                         <SelectItem value="Not Applicable">Not Applicable</SelectItem>
-                        <SelectItem value="2.5%">2.5%</SelectItem>
-                        <SelectItem value="5%">5%</SelectItem>
-                        <SelectItem value="6%">6%</SelectItem>
-                        <SelectItem value="9%">9%</SelectItem>
-                        <SelectItem value="12%">12%</SelectItem>
-                        <SelectItem value="18%">18%</SelectItem>
+                        <SelectItem value="2.5%" disabled={formData.igst !== 'Not Applicable'}>2.5%</SelectItem>
+                        <SelectItem value="5%" disabled={formData.igst !== 'Not Applicable'}>5%</SelectItem>
+                        <SelectItem value="6%" disabled={formData.igst !== 'Not Applicable'}>6%</SelectItem>
+                        <SelectItem value="9%" disabled={formData.igst !== 'Not Applicable'}>9%</SelectItem>
+                        <SelectItem value="12%" disabled={formData.igst !== 'Not Applicable'}>12%</SelectItem>
+                        <SelectItem value="18%" disabled={formData.igst !== 'Not Applicable'}>18%</SelectItem>
                       </SelectContent>
                     </Select>
+                    {formData.igst !== 'Not Applicable' && (
+                      <p className="text-xs text-orange-500">CGST disabled because IGST is selected</p>
+                    )}
                     {gstCalculation.cgstAmount > 0 && (
                       <p className="text-xs text-gray-500">₹{gstCalculation.cgstAmount.toFixed(2)}</p>
                     )}
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="igst">IGST</Label>
+                    <Label htmlFor="igst">IGST <span className="text-sm text-gray-500">(Either CGST or IGST)</span></Label>
                     <Select value={formData.igst} onValueChange={(value) => handleChange('igst', value)}>
-                      <SelectTrigger>
+                      <SelectTrigger className={formData.cgst !== 'Not Applicable' ? 'opacity-50 cursor-not-allowed' : ''}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-white">
                         <SelectItem value="Not Applicable">Not Applicable</SelectItem>
-                        <SelectItem value="2.5%">2.5%</SelectItem>
-                        <SelectItem value="5%">5%</SelectItem>
-                        <SelectItem value="6%">6%</SelectItem>
-                        <SelectItem value="9%">9%</SelectItem>
-                        <SelectItem value="12%">12%</SelectItem>
-                        <SelectItem value="18%">18%</SelectItem>
+                        <SelectItem value="2.5%" disabled={formData.cgst !== 'Not Applicable'}>2.5%</SelectItem>
+                        <SelectItem value="5%" disabled={formData.cgst !== 'Not Applicable'}>5%</SelectItem>
+                        <SelectItem value="6%" disabled={formData.cgst !== 'Not Applicable'}>6%</SelectItem>
+                        <SelectItem value="9%" disabled={formData.cgst !== 'Not Applicable'}>9%</SelectItem>
+                        <SelectItem value="12%" disabled={formData.cgst !== 'Not Applicable'}>12%</SelectItem>
+                        <SelectItem value="18%" disabled={formData.cgst !== 'Not Applicable'}>18%</SelectItem>
                       </SelectContent>
                     </Select>
+                    {formData.cgst !== 'Not Applicable' && (
+                      <p className="text-xs text-orange-500">IGST disabled because CGST is selected</p>
+                    )}
                     {gstCalculation.igstAmount > 0 && (
                       <p className="text-xs text-gray-500">₹{gstCalculation.igstAmount.toFixed(2)}</p>
                     )}
@@ -652,36 +699,62 @@ type QualityDetail = {
 
               <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="stitching-challans">
-                  <AccordionTrigger>Show Stitching Challans</AccordionTrigger>
+                  <AccordionTrigger>
+                    Show Stitching Challans
+                    {formData.ledger_id && (
+                      <span className="ml-2 text-sm text-gray-500">
+                        ({filteredStitchingChallans.length} found)
+                      </span>
+                    )}
+                  </AccordionTrigger>
                   <AccordionContent>
                     <div className="space-y-4">
-                      <Input
-                        placeholder="Search challans..."
-                        value={challanSearchTerm}
-                        onChange={(e) => setChallanSearchTerm(e.target.value)}
-                      />
-                      <div className="max-h-60 overflow-y-auto border rounded-md">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Challan No</TableHead>
-                              <TableHead>Date</TableHead>
-                              <TableHead>Quality</TableHead>
-                              <TableHead>Amount</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {filteredStitchingChallans.map(challan => (
-                              <TableRow key={challan.id}>
-                                <TableCell>{challan.challan_no}</TableCell>
-                                <TableCell>{formatDate(challan.date)}</TableCell>
-                                <TableCell>{challan.quality}</TableCell>
-                                <TableCell>{formatCurrency(challan.transport_charge || 0)}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
+                      {!formData.ledger_id ? (
+                        <div className="text-center py-8 text-gray-500">
+                          <p>Please select a ledger first to view related stitching challans</p>
+                        </div>
+                      ) : (
+                        <>
+                          <Input
+                            placeholder="Search challans..."
+                            value={challanSearchTerm}
+                            onChange={(e) => setChallanSearchTerm(e.target.value)}
+                          />
+                          <div className="max-h-60 overflow-y-auto border rounded-md">
+                            {filteredStitchingChallans.length === 0 ? (
+                              <div className="text-center py-8 text-gray-500">
+                                <p>
+                                  {challanSearchTerm 
+                                    ? `No stitching challans found matching "${challanSearchTerm}"` 
+                                    : `No stitching challans found for ${selectedLedger?.business_name || 'selected ledger'}`
+                                  }
+                                </p>
+                              </div>
+                            ) : (
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Challan No</TableHead>
+                                    <TableHead>Date</TableHead>
+                                    <TableHead>Quality</TableHead>
+                                    <TableHead>Amount</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {filteredStitchingChallans.map(challan => (
+                                    <TableRow key={challan.id}>
+                                      <TableCell>{challan.challan_no}</TableCell>
+                                      <TableCell>{formatDate(challan.date)}</TableCell>
+                                      <TableCell>{challan.quality}</TableCell>
+                                      <TableCell>{formatCurrency(challan.transport_charge || 0)}</TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
                   </AccordionContent>
                 </AccordionItem>

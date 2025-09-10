@@ -141,6 +141,7 @@ export type Database = {
           top_pcs_qty: number | null
           bottom_qty: number | null
           bottom_pcs_qty: number | null
+          selected_product_id: number | null
         }
         Insert: {
           challan_no: string
@@ -173,6 +174,7 @@ export type Database = {
           top_pcs_qty?: number | null
           bottom_qty?: number | null
           bottom_pcs_qty?: number | null
+          selected_product_id?: number | null
         }
         Update: {
           challan_no?: string
@@ -205,6 +207,7 @@ export type Database = {
           top_pcs_qty?: number | null
           bottom_qty?: number | null
           bottom_pcs_qty?: number | null
+          selected_product_id?: number | null
         }
         Relationships: [
           {
@@ -220,6 +223,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ledgers"
             referencedColumns: ["ledger_id"]
+          },
+          {
+            foreignKeyName: "isteaching_challans_selected_product_id_fkey"
+            columns: ["selected_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
           }
         ]
       }

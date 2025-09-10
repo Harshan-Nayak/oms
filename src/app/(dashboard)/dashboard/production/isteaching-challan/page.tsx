@@ -40,6 +40,9 @@ export default async function IsteachingChallanPage() {
       *,
       ledgers (
         business_name
+      ),
+      products (
+        product_name
       )
     `, { count: 'exact' })
     .order('created_at', { ascending: false })
@@ -66,7 +69,9 @@ export default async function IsteachingChallanPage() {
     
   const { data: products } = await supabase
     .from('products')
-    .select('product_name, product_qty')
+    .select('*')
+    .eq('product_status', 'Active')
+    .order('product_name', { ascending: true })
 
   // Fetch batch numbers from weaver_challans
   const { data: batchNumbers } = await supabase

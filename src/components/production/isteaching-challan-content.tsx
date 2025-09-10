@@ -44,13 +44,16 @@ type IsteachingChallan = Database['public']['Tables']['isteaching_challans']['Ro
   ledgers?: {
     business_name: string
   }
+  products?: {
+    product_name: string
+  }
 }
 
 type Ledger = Database['public']['Tables']['ledgers']['Row']
 type Quality = { product_name: string }
 type BatchNumber = { batch_number: string, quality_details: Json }
 type UserRole = Database['public']['Tables']['profiles']['Row']['user_role']
-type Product = { product_name: string, product_qty: number | null }
+type Product = Database['public']['Tables']['products']['Row']
 type WeaverChallan = { quality_details: Json, batch_number: string }
 
 interface IsteachingChallanContentProps {
@@ -92,7 +95,8 @@ export function IsteachingChallanContent({
       challan.challan_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
       challan.batch_number.join(', ').toLowerCase().includes(searchTerm.toLowerCase()) ||
       challan.quality.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (challan.ledgers?.business_name && challan.ledgers.business_name.toLowerCase().includes(searchTerm.toLowerCase()))
+      (challan.ledgers?.business_name && challan.ledgers.business_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (challan.products?.product_name && challan.products.product_name.toLowerCase().includes(searchTerm.toLowerCase()))
 
     const matchesParty = !partyFilter || partyFilter === 'all' || challan.ledger_id === partyFilter
     
@@ -342,7 +346,7 @@ export function IsteachingChallanContent({
                   <TableCell>{challan.quality}</TableCell>
                   <TableCell>{challan.batch_number.join(', ')}</TableCell>
                   <TableCell>{challan.quantity}</TableCell>
-                  <TableCell>{challan.product_name}</TableCell>
+                  <TableCell>{challan.products?.product_name || 'N/A'}</TableCell>
                   <TableCell>
                     <Button variant="outline" size="icon" onClick={() => window.open(`/print/isteaching-challan/${challan.id}`, '_blank')}>
                       <FileText className="h-4 w-4" />

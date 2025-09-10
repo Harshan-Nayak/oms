@@ -39,35 +39,94 @@ export default function Passbook({ ledgerId, vendorChallans }: PassbookProps) {
 
       if (vendorChallans) {
         // This is a vendor passbook, only use the provided challans
-        allTransactions = (vendorChallans || []).map(vc => ({
-          date: vc.challan_date,
-          detail: 'Vendor Challan',
-          remark: vc.vendor_invoice_number || vc.challan_no,
-          credit: 0,
-          debit: vc.vendor_amount || 0,
-        }));
+        // For vendor passbook, show Total Amount (After GST) in DEBIT column
+        const vendorTransactions = (vendorChallans || []).map(vc => {
+          // Calculate GST amounts for vendor challans
+          const calculateGSTAmount = (percentage: string | undefined | null, baseAmount: number) => {
+            if (!percentage || percentage === 'Not Applicable') return 0;
+            const rate = parseFloat(percentage.replace('%', '')) / 100;
+            return baseAmount * rate;
+          };
+          
+          const baseAmount = vc.vendor_amount || 0;
+          const sgstAmount = calculateGSTAmount(vc.sgst, baseAmount);
+          const cgstAmount = calculateGSTAmount(vc.cgst, baseAmount);
+          const igstAmount = calculateGSTAmount(vc.igst, baseAmount);
+          const totalAmountAfterGST = baseAmount + sgstAmount + cgstAmount + igstAmount;
+          
+          return {
+            date: vc.challan_date,
+            detail: 'Vendor Challan',
+            remark: vc.vendor_invoice_number || vc.challan_no,
+            credit: 0,
+            debit: totalAmountAfterGST,
+          };
+        });
+        
+        allTransactions = vendorTransactions;
       } else {
         // This is a regular passbook, fetch all related transactions
         const { data: challans, error: challanError } = await supabase
           .from('weaver_challans')
-          .select('challan_no, challan_date, total_grey_mtr, quality_details')
+          .select('challan_no, challan_date, transport_charge, vendor_amount, sgst, cgst, igst')
           .eq('ledger_id', ledgerId);
+
+        // Also fetch vendor challans for this ledger to include in regular passbook
+        const { data: vendorChallansForRegular, error: vendorChallanError } = await supabase
+          .from('weaver_challans')
+          .select('challan_no, challan_date, vendor_amount, vendor_invoice_number, sgst, cgst, igst')
+          .eq('vendor_ledger_id', ledgerId);
 
         const { data: paymentVouchers, error: paymentVoucherError } = await supabase
           .from('payment_vouchers')
           .select('id, date, payment_for, payment_type, amount')
           .eq('ledger_id', ledgerId);
 
-        if (challanError || paymentVoucherError) {
-          console.error('Error fetching data:', challanError || paymentVoucherError);
+        if (challanError || paymentVoucherError || vendorChallanError) {
+          console.error('Error fetching data:', challanError || paymentVoucherError || vendorChallanError);
         } else {
-          const challanTransactions = (challans || []).map(c => ({
-            date: c.challan_date,
-            detail: 'Weaver Challan',
-            remark: c.challan_no,
-            credit: c.total_grey_mtr * (c.quality_details?.[0]?.rate || 0),
-            debit: 0,
-          }));
+          const challanTransactions = (challans || []).map(c => {
+            // Calculate GST amounts based on vendor_amount (not total_grey_mtr * rate)
+            const calculateGSTAmount = (percentage: string | undefined | null, baseAmount: number) => {
+              if (!percentage || percentage === 'Not Applicable') return 0;
+              const rate = parseFloat(percentage.replace('%', '')) / 100;
+              return baseAmount * rate;
+            };
+            
+            // Use vendor_amount as the base amount for GST calculation
+            const baseAmount = c.vendor_amount || 0;
+            const sgstAmount = calculateGSTAmount(c.sgst, baseAmount);
+            const cgstAmount = calculateGSTAmount(c.cgst, baseAmount);
+            const igstAmount = calculateGSTAmount(c.igst, baseAmount);
+            const vendorAmountWithGST = baseAmount + sgstAmount + cgstAmount + igstAmount;
+            const transportCharge = c.transport_charge || 0;
+            const totalCredit = transportCharge + vendorAmountWithGST;
+            
+            // Debug logging for the specific challan
+            if (c.challan_no === 'BNG-CH-20250910-001') {
+              console.log('Debug - Weaver Challan BNG-CH-20250910-001:', {
+                vendor_amount: c.vendor_amount,
+                baseAmount: baseAmount,
+                sgst: c.sgst,
+                cgst: c.cgst,
+                igst: c.igst,
+                sgstAmount: sgstAmount,
+                cgstAmount: cgstAmount,
+                igstAmount: igstAmount,
+                vendorAmountWithGST: vendorAmountWithGST,
+                transportCharge: transportCharge,
+                totalCredit: totalCredit
+              });
+            }
+            
+            return {
+              date: c.challan_date,
+              detail: 'Weaver Challan',
+              remark: c.challan_no,
+              credit: totalCredit,
+              debit: 0,
+            };
+          });
 
           const sortedVouchers = [...(paymentVouchers || [])].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
           let creditCounter = 1;
@@ -98,7 +157,32 @@ export default function Passbook({ ledgerId, vendorChallans }: PassbookProps) {
               debit: pv.payment_type === 'Debit' ? pv.amount : 0,
             };
           });
-          allTransactions = [...challanTransactions, ...paymentVoucherTransactions];
+          
+          // Add vendor challan transactions to regular passbook as DEBIT entries
+          const vendorChallanTransactions = (vendorChallansForRegular || []).map(vc => {
+            // Calculate GST amounts for vendor challans
+            const calculateGSTAmount = (percentage: string | undefined | null, baseAmount: number) => {
+              if (!percentage || percentage === 'Not Applicable') return 0;
+              const rate = parseFloat(percentage.replace('%', '')) / 100;
+              return baseAmount * rate;
+            };
+            
+            const baseAmount = vc.vendor_amount || 0;
+            const sgstAmount = calculateGSTAmount(vc.sgst, baseAmount);
+            const cgstAmount = calculateGSTAmount(vc.cgst, baseAmount);
+            const igstAmount = calculateGSTAmount(vc.igst, baseAmount);
+            const totalAmountAfterGST = baseAmount + sgstAmount + cgstAmount + igstAmount;
+            
+            return {
+              date: vc.challan_date,
+              detail: 'Vendor Challan',
+              remark: vc.vendor_invoice_number || vc.challan_no,
+              credit: 0,
+              debit: totalAmountAfterGST,
+            };
+          });
+          
+          allTransactions = [...challanTransactions, ...vendorChallanTransactions, ...paymentVoucherTransactions];
         }
       }
 

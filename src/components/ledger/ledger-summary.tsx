@@ -27,7 +27,7 @@ export default function LedgerSummary({ ledgerId }: LedgerSummaryProps) {
         // Fetch weaver challans for this ledger
         const { data: challans, error: challanError } = await supabase
           .from('weaver_challans')
-          .select('total_grey_mtr, quality_details')
+          .select('transport_charge, vendor_amount, sgst, cgst, igst')
           .eq('ledger_id', ledgerId)
 
         // Fetch payment vouchers for this ledger
@@ -41,12 +41,25 @@ export default function LedgerSummary({ ledgerId }: LedgerSummaryProps) {
           return
         }
 
-        // Calculate total credit from challans
+        // Calculate total credit from challans - using transport_charge + vendor_amount (including GST)
         let totalCredit = 0
         if (challans) {
           challans.forEach(challan => {
-            const rate = challan.quality_details?.[0]?.rate || 0
-            totalCredit += challan.total_grey_mtr * rate
+            // Calculate GST amounts based on vendor_amount
+            const calculateGSTAmount = (percentage: string | undefined | null, baseAmount: number) => {
+              if (!percentage || percentage === 'Not Applicable') return 0;
+              const rate = parseFloat(percentage.replace('%', '')) / 100;
+              return baseAmount * rate;
+            };
+            
+            // Use vendor_amount as the base amount for GST calculation
+            const baseAmount = challan.vendor_amount || 0;
+            const sgstAmount = calculateGSTAmount(challan.sgst, baseAmount);
+            const cgstAmount = calculateGSTAmount(challan.cgst, baseAmount);
+            const igstAmount = calculateGSTAmount(challan.igst, baseAmount);
+            const vendorAmountWithGST = baseAmount + sgstAmount + cgstAmount + igstAmount;
+            const transportCharge = challan.transport_charge || 0;
+            totalCredit += transportCharge + vendorAmountWithGST;
           })
         }
 
