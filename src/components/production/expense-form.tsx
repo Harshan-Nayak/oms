@@ -21,16 +21,19 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import * as PopoverPrimitive from "@radix-ui/react-popover"
 
 type Ledger = Database['public']['Tables']['ledgers']['Row'];
-type WeaverChallan = Database['public']['Tables']['weaver_challans']['Row'];
+type IsteachingChallan = Database['public']['Tables']['isteaching_challans']['Row'];
 type Expense = Database['public']['Tables']['expenses']['Row'];
 
 const expenseSchema = z.object({
   expense_date: z.string(),
-  ledger_id: z.string().min(1, 'Ledger selection is required'),
   challan_no: z.string().min(1, 'Challan/Batch Number is required'),
+  ledger_id: z.string().min(1, 'Ledger selection is required'),
   expense_for: z.array(z.string()).min(1, 'At least one expense category is required'),
   other_expense_description: z.string().optional(),
-  cost: z.number().min(0.01, 'Cost must be greater than 0'),
+  amount_before_gst: z.number().min(0.01, 'Amount must be greater than 0'),
+  sgst: z.string(),
+  cgst: z.string(),
+  igst: z.string(),
 });
 
 type ExpenseFormData = z.infer<typeof expenseSchema>;
@@ -55,7 +58,7 @@ export function ExpenseForm({ ledgers, userId, onSuccessRedirect, expense }: Exp
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [selectedLedger, setSelectedLedger] = useState<Ledger | null>(null);
-  const [challans, setChallans] = useState<WeaverChallan[]>([]);
+  const [challans, setChallans] = useState<IsteachingChallan[]>([]);
 
   const {
     register,
@@ -68,67 +71,114 @@ export function ExpenseForm({ ledgers, userId, onSuccessRedirect, expense }: Exp
     resolver: zodResolver(expenseSchema),
     defaultValues: expense ? {
       expense_date: expense.expense_date,
-      ledger_id: expense.ledger_id || '',
       challan_no: expense.challan_no || '',
+      ledger_id: '', // Will be set from challan selection
       expense_for: expense.expense_for || [],
       other_expense_description: expense.other_expense_description || '',
-      cost: expense.cost || 0,
+      amount_before_gst: expense.amount_before_gst || 0,
+      sgst: expense.sgst || 'Not Applicable',
+      cgst: expense.cgst || 'Not Applicable',
+      igst: expense.igst || 'Not Applicable',
     } : {
       expense_date: new Date().toISOString().split('T')[0],
-      ledger_id: '',
       challan_no: '',
+      ledger_id: '',
       expense_for: [],
-      cost: 0,
+      amount_before_gst: 0,
+      sgst: 'Not Applicable',
+      cgst: 'Not Applicable',
+      igst: 'Not Applicable',
     },
   });
 
   const expenseFor = watch('expense_for');
   const challanNo = watch('challan_no');
+  const amountBeforeGst = watch('amount_before_gst');
+  const sgst = watch('sgst');
+  const cgst = watch('cgst');
+  const igst = watch('igst');
   const showOtherField = expenseFor.includes('Other');
 
   useEffect(() => {
-    if (expense) {
-      const ledger = ledgers.find(l => l.ledger_id === expense.ledger_id);
-      setSelectedLedger(ledger || null);
-      if (expense.ledger_id) {
-        handleLedgerSelect(expense.ledger_id, expense.challan_no);
+    // Load all stitching challans on component mount
+    fetchAllStitchingChallans();
+  }, []);
+
+  useEffect(() => {
+    // After challans are loaded, set up editing data
+    if (expense && challans.length > 0) {
+      if (expense.challan_no) {
+        handleChallanSelect(expense.challan_no);
       }
     }
-  }, [expense, ledgers]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expense, challans]);
 
-  const handleLedgerSelect = async (ledgerId: string, defaultChallan?: string | null) => {
-    const ledger = ledgers.find(l => l.ledger_id === ledgerId);
-    setSelectedLedger(ledger || null);
-    setValue('ledger_id', ledgerId);
-    if (!defaultChallan) {
-      setValue('challan_no', ''); // Reset challan selection
-    }
-
-    if (ledgerId) {
-      const { data, error } = await supabase
-        .from('weaver_challans')
-        .select('*')
-        .eq('ledger_id', ledgerId);
-      if (error) {
-        console.error('Error fetching challans:', error);
-        setChallans([]);
-      } else {
-        setChallans(data || []);
-        if (defaultChallan) {
-          setValue('challan_no', defaultChallan);
-        }
-      }
-    } else {
+  const fetchAllStitchingChallans = async () => {
+    const { data, error } = await supabase
+      .from('isteaching_challans')
+      .select('*, ledgers!inner(business_name)')
+      .order('challan_no', { ascending: false });
+      
+    if (error) {
+      console.error('Error fetching stitching challans:', error);
       setChallans([]);
+    } else {
+      setChallans(data || []);
     }
   };
+
+  const handleChallanSelect = async (challanNo: string) => {
+    setValue('challan_no', challanNo);
+    
+    // Find the selected challan and auto-fetch its ledger
+    const selectedChallan = challans.find(c => c.challan_no === challanNo);
+    if (selectedChallan && selectedChallan.ledger_id) {
+      const ledger = ledgers.find(l => l.ledger_id === selectedChallan.ledger_id);
+      setSelectedLedger(ledger || null);
+      setValue('ledger_id', selectedChallan.ledger_id);
+    } else {
+      setSelectedLedger(null);
+      setValue('ledger_id', '');
+    }
+  };
+
+  // Calculate GST amounts and total
+  const calculateGSTAndTotal = () => {
+    const baseAmount = parseFloat(String(amountBeforeGst)) || 0;
+    
+    const getGSTValue = (gstType: string) => {
+      if (gstType === 'Not Applicable') return 0;
+      return parseFloat(gstType.replace('%', '')) / 100;
+    };
+    
+    const sgstAmount = baseAmount * getGSTValue(sgst);
+    const cgstAmount = baseAmount * getGSTValue(cgst);
+    const igstAmount = baseAmount * getGSTValue(igst);
+    
+    const totalGST = sgstAmount + cgstAmount + igstAmount;
+    const totalAmount = baseAmount + totalGST;
+    
+    return {
+      sgstAmount,
+      cgstAmount,
+      igstAmount,
+      totalGST,
+      totalAmount
+    };
+  };
+
+  const gstCalculation = calculateGSTAndTotal();
 
   const onSubmit = async (data: ExpenseFormData) => {
     setLoading(true);
     setError('');
 
     try {
-      const expenseData = { ...data };
+      const expenseData = { 
+        ...data, 
+        cost: gstCalculation.totalAmount // Store total amount in cost field for backward compatibility
+      };
 
       if (expense) {
         const { error: updateError } = await supabase
@@ -176,37 +226,37 @@ export function ExpenseForm({ ledgers, userId, onSuccessRedirect, expense }: Exp
           <CardDescription>{expense ? 'Update the details of the expense.' : 'Fill in the details for the new expense.'}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Date</Label>
-              <Input type="date" {...register('expense_date')} readOnly className="bg-gray-100" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ledger_id">Select Ledger *</Label>
-              <LedgerSelectModal ledgers={ledgers} onLedgerSelect={handleLedgerSelect}>
-                <Button type="button" variant="outline" className="w-full justify-start">
-                  {selectedLedger ? selectedLedger.business_name : '-- Select Ledger --'}
-                </Button>
-              </LedgerSelectModal>
-              {errors.ledger_id && <p className="text-sm text-red-600">{errors.ledger_id.message}</p>}
-            </div>
+          <div className="space-y-2">
+            <Label>Date</Label>
+            <Input type="date" {...register('expense_date')} readOnly className="bg-gray-100" />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="challan_no">Select Challan/Batch Number *</Label>
-            <Select value={challanNo} onValueChange={(value) => setValue('challan_no', value)} disabled={!selectedLedger}>
+            <Select value={challanNo} onValueChange={handleChallanSelect}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a challan" />
               </SelectTrigger>
               <SelectContent className='bg-white'>
                 {challans.map(challan => (
                   <SelectItem key={challan.id} value={challan.challan_no}>
-                    {challan.challan_no} ({challan.batch_number})
+                    {challan.challan_no} ({Array.isArray(challan.batch_number) ? challan.batch_number.join(', ') : challan.batch_number})
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             {errors.challan_no && <p className="text-sm text-red-600">{errors.challan_no.message}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="ledger_id">Select Ledger *</Label>
+            <Input
+              value={selectedLedger ? selectedLedger.business_name : 'No ledger selected'}
+              readOnly
+              className="bg-gray-100"
+              placeholder="Auto-fetched from selected challan"
+            />
+            {errors.ledger_id && <p className="text-sm text-red-600">{errors.ledger_id.message}</p>}
           </div>
 
           <div className="space-y-2">
@@ -261,16 +311,104 @@ export function ExpenseForm({ ledgers, userId, onSuccessRedirect, expense }: Exp
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="cost">Cost (₹) *</Label>
+            <Label htmlFor="amount_before_gst">Amount (Before GST) *</Label>
             <Input
-              id="cost"
+              id="amount_before_gst"
               type="number"
               step="0.01"
-              {...register('cost', { valueAsNumber: true })}
+              {...register('amount_before_gst', { valueAsNumber: true })}
               placeholder="0.00"
             />
-            {errors.cost && <p className="text-sm text-red-600">{errors.cost.message}</p>}
+            {errors.amount_before_gst && <p className="text-sm text-red-600">{errors.amount_before_gst.message}</p>}
           </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="sgst">SGST</Label>
+              <Select value={sgst} onValueChange={(value) => setValue('sgst', value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  <SelectItem value="Not Applicable">Not Applicable</SelectItem>
+                  <SelectItem value="2.5%">2.5%</SelectItem>
+                  <SelectItem value="5%">5%</SelectItem>
+                  <SelectItem value="6%">6%</SelectItem>
+                  <SelectItem value="9%">9%</SelectItem>
+                  <SelectItem value="12%">12%</SelectItem>
+                  <SelectItem value="18%">18%</SelectItem>
+                </SelectContent>
+              </Select>
+              {gstCalculation.sgstAmount > 0 && (
+                <p className="text-xs text-gray-500">₹{gstCalculation.sgstAmount.toFixed(2)}</p>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="cgst">CGST</Label>
+              <Select value={cgst} onValueChange={(value) => setValue('cgst', value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  <SelectItem value="Not Applicable">Not Applicable</SelectItem>
+                  <SelectItem value="2.5%">2.5%</SelectItem>
+                  <SelectItem value="5%">5%</SelectItem>
+                  <SelectItem value="6%">6%</SelectItem>
+                  <SelectItem value="9%">9%</SelectItem>
+                  <SelectItem value="12%">12%</SelectItem>
+                  <SelectItem value="18%">18%</SelectItem>
+                </SelectContent>
+              </Select>
+              {gstCalculation.cgstAmount > 0 && (
+                <p className="text-xs text-gray-500">₹{gstCalculation.cgstAmount.toFixed(2)}</p>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="igst">IGST</Label>
+              <Select value={igst} onValueChange={(value) => setValue('igst', value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  <SelectItem value="Not Applicable">Not Applicable</SelectItem>
+                  <SelectItem value="2.5%">2.5%</SelectItem>
+                  <SelectItem value="5%">5%</SelectItem>
+                  <SelectItem value="6%">6%</SelectItem>
+                  <SelectItem value="9%">9%</SelectItem>
+                  <SelectItem value="12%">12%</SelectItem>
+                  <SelectItem value="18%">18%</SelectItem>
+                </SelectContent>
+              </Select>
+              {gstCalculation.igstAmount > 0 && (
+                <p className="text-xs text-gray-500">₹{gstCalculation.igstAmount.toFixed(2)}</p>
+              )}
+            </div>
+          </div>
+
+          {(parseFloat(String(amountBeforeGst)) > 0 && gstCalculation.totalAmount > 0) && (
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-gray-600">Base Amount:</p>
+                  <p className="font-medium">₹{parseFloat(String(amountBeforeGst) || '0').toFixed(2)}</p>
+                </div>
+                {gstCalculation.totalGST > 0 && (
+                  <div>
+                    <p className="text-gray-600">Total GST:</p>
+                    <p className="font-medium text-blue-600">₹{gstCalculation.totalGST.toFixed(2)}</p>
+                  </div>
+                )}
+              </div>
+              <div className="mt-3 pt-3 border-t border-blue-300">
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-gray-800">Total Amount:</span>
+                  <span className="font-bold text-lg text-blue-700">₹{gstCalculation.totalAmount.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

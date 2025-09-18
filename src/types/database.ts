@@ -12,6 +12,10 @@ export type Database = {
       expenses: {
         Row: {
           cost: number
+          amount_before_gst: number
+          sgst: string
+          cgst: string
+          igst: string
           created_at: string
           created_by: string | null
           expense_date: string
@@ -24,6 +28,10 @@ export type Database = {
         }
         Insert: {
           cost: number
+          amount_before_gst: number
+          sgst?: string
+          cgst?: string
+          igst?: string
           created_at?: string
           created_by?: string | null
           expense_date: string
@@ -36,6 +44,10 @@ export type Database = {
         }
         Update: {
           cost?: number
+          amount_before_gst?: number
+          sgst?: string
+          cgst?: string
+          igst?: string
           created_at?: string
           created_by?: string | null
           expense_date?: string
@@ -65,7 +77,7 @@ export type Database = {
             foreignKeyName: "expenses_challan_no_fkey"
             columns: ["challan_no"]
             isOneToOne: false
-            referencedRelation: "weaver_challans"
+            referencedRelation: "isteaching_challans"
             referencedColumns: ["challan_no"]
           },
         ]
@@ -142,6 +154,9 @@ export type Database = {
           bottom_qty: number | null
           bottom_pcs_qty: number | null
           selected_product_id: number | null
+          both_selected: boolean | null
+          both_top_qty: number | null
+          both_bottom_qty: number | null
         }
         Insert: {
           challan_no: string
@@ -175,6 +190,9 @@ export type Database = {
           bottom_qty?: number | null
           bottom_pcs_qty?: number | null
           selected_product_id?: number | null
+          both_selected?: boolean | null
+          both_top_qty?: number | null
+          both_bottom_qty?: number | null
         }
         Update: {
           challan_no?: string
@@ -208,6 +226,9 @@ export type Database = {
           bottom_qty?: number | null
           bottom_pcs_qty?: number | null
           selected_product_id?: number | null
+          both_selected?: boolean | null
+          both_top_qty?: number | null
+          both_bottom_qty?: number | null
         }
         Relationships: [
           {

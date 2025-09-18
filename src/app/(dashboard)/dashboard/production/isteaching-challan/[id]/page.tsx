@@ -248,6 +248,91 @@ export default async function IsteachingChallanDetailPage({ params }: Isteaching
             </CardContent>
           </Card>
 
+          {/* Both (Top + Bottom) Section */}
+          {isteachingChallan.both_selected && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Package className="h-5 w-5 mr-2" />
+                  Both (Top + Bottom) Configuration
+                </CardTitle>
+                <CardDescription>
+                  Advanced calculation for simultaneous top and bottom production
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Top Qty (meters)</label>
+                    <p className="text-lg font-semibold text-blue-600">{isteachingChallan.both_top_qty || 0}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Bottom Qty (meters)</label>
+                    <p className="text-lg font-semibold text-blue-600">{isteachingChallan.both_bottom_qty || 0}</p>
+                  </div>
+                </div>
+                
+                {isteachingChallan.both_top_qty && isteachingChallan.both_bottom_qty && (
+                  <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <h5 className="text-md font-semibold text-blue-800 mb-3">Calculation Results</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-700">Combined Qty</label>
+                        <p className="text-lg font-bold">{(isteachingChallan.both_top_qty + isteachingChallan.both_bottom_qty).toFixed(2)} meters</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-700">Step 1 Result</label>
+                        <p className="text-lg font-bold">
+                          {((isteachingChallan.top_qty && isteachingChallan.top_pcs_qty
+                            ? Math.floor(isteachingChallan.top_qty / isteachingChallan.top_pcs_qty)
+                            : 0) +
+                            (isteachingChallan.bottom_qty && isteachingChallan.bottom_pcs_qty
+                              ? Math.floor(isteachingChallan.bottom_qty / isteachingChallan.bottom_pcs_qty)
+                              : 0)) / (isteachingChallan.both_top_qty + isteachingChallan.both_bottom_qty)}
+                        </p>
+                        <p className="text-xs text-gray-500">Total QTY ÷ Combined Qty</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-700">Final Pieces Each</label>
+                        <p className="text-xl font-bold text-green-600">
+                          {Math.floor((((isteachingChallan.top_qty && isteachingChallan.top_pcs_qty
+                            ? Math.floor(isteachingChallan.top_qty / isteachingChallan.top_pcs_qty)
+                            : 0) +
+                            (isteachingChallan.bottom_qty && isteachingChallan.bottom_pcs_qty
+                              ? Math.floor(isteachingChallan.bottom_qty / isteachingChallan.bottom_pcs_qty)
+                              : 0)) / (isteachingChallan.both_top_qty + isteachingChallan.both_bottom_qty)) / 2)}
+                        </p>
+                        <p className="text-xs text-gray-500">Step 1 ÷ 2</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-green-100 p-3 rounded-lg">
+                        <p className="text-sm font-medium text-green-800">
+                          Top: {Math.floor((((isteachingChallan.top_qty && isteachingChallan.top_pcs_qty
+                            ? Math.floor(isteachingChallan.top_qty / isteachingChallan.top_pcs_qty)
+                            : 0) +
+                            (isteachingChallan.bottom_qty && isteachingChallan.bottom_pcs_qty
+                              ? Math.floor(isteachingChallan.bottom_qty / isteachingChallan.bottom_pcs_qty)
+                              : 0)) / (isteachingChallan.both_top_qty + isteachingChallan.both_bottom_qty)) / 2)} pcs will be made
+                        </p>
+                      </div>
+                      <div className="bg-orange-100 p-3 rounded-lg">
+                        <p className="text-sm font-medium text-orange-800">
+                          Bottom: {Math.floor((((isteachingChallan.top_qty && isteachingChallan.top_pcs_qty
+                            ? Math.floor(isteachingChallan.top_qty / isteachingChallan.top_pcs_qty)
+                            : 0) +
+                            (isteachingChallan.bottom_qty && isteachingChallan.bottom_pcs_qty
+                              ? Math.floor(isteachingChallan.bottom_qty / isteachingChallan.bottom_pcs_qty)
+                              : 0)) / (isteachingChallan.both_top_qty + isteachingChallan.both_bottom_qty)) / 2)} pcs will be made
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">

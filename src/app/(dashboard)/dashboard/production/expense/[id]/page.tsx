@@ -24,7 +24,7 @@ export default async function ViewExpensePage({ params }: ViewExpensePageProps) 
     .select(`
       *,
       ledgers ( business_name ),
-      weaver_challans ( batch_number )
+      isteaching_challans ( batch_number )
     `)
     .eq('id', resolvedParams.id)
     .single();
@@ -68,11 +68,34 @@ export default async function ViewExpensePage({ params }: ViewExpensePageProps) 
             </div>
             <div>
               <Label>Challan/Batch Number</Label>
-              <p>{expense.challan_no} ({expense.weaver_challans?.batch_number})</p>
+              <p>{expense.challan_no} ({Array.isArray(expense.isteaching_challans?.batch_number) ? expense.isteaching_challans.batch_number.join(', ') : expense.isteaching_challans?.batch_number})</p>
             </div>
             <div>
-              <Label>Cost</Label>
-              <p>₹{expense.cost.toFixed(2)}</p>
+              <Label>Amount (Before GST)</Label>
+              <p>₹{expense.amount_before_gst?.toFixed(2) || expense.cost.toFixed(2)}</p>
+            </div>
+            <div>
+              <Label>GST Details</Label>
+              <div className="space-y-1 text-sm">
+                {expense.sgst && expense.sgst !== 'Not Applicable' && (
+                  <p>SGST: {expense.sgst}</p>
+                )}
+                {expense.cgst && expense.cgst !== 'Not Applicable' && (
+                  <p>CGST: {expense.cgst}</p>
+                )}
+                {expense.igst && expense.igst !== 'Not Applicable' && (
+                  <p>IGST: {expense.igst}</p>
+                )}
+                {(!expense.sgst || expense.sgst === 'Not Applicable') && 
+                 (!expense.cgst || expense.cgst === 'Not Applicable') && 
+                 (!expense.igst || expense.igst === 'Not Applicable') && (
+                  <p>No GST Applied</p>
+                )}
+              </div>
+            </div>
+            <div>
+              <Label>Total Cost (After GST)</Label>
+              <p className="font-semibold text-lg">₹{expense.cost.toFixed(2)}</p>
             </div>
             <div>
               <Label>Entry By</Label>

@@ -60,6 +60,9 @@ const isteachingChallanSchema = z.object({
   top_pcs_qty: z.number().min(0).optional(),
   bottom_qty: z.number().min(0).optional(),
   bottom_pcs_qty: z.number().min(0).optional(),
+  both_selected: z.boolean().optional(),
+  both_top_qty: z.number().min(0).optional(),
+  both_bottom_qty: z.number().min(0).optional(),
 })
 
 type IsteachingChallanFormData = z.infer<typeof isteachingChallanSchema>
@@ -99,6 +102,7 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
       date: new Date().toISOString().split('T')[0],
       batch_number: [],
       selected_sizes: [{ size: 'M', quantity: 0 }],
+      both_selected: false,
     },
   })
 
@@ -117,10 +121,22 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
   const bottomQty = watch('bottom_qty')
   const bottomPcsQty = watch('bottom_pcs_qty')
   const currentQuantity = watch('quantity')
+  const bothSelected = watch('both_selected')
+  const bothTopQty = watch('both_top_qty')
+  const bothBottomQty = watch('both_bottom_qty')
 
   const topPcsCreated = topQty && topPcsQty ? Math.floor(topQty / topPcsQty) : 0
   const bottomPcsCreated = bottomQty && bottomPcsQty ? Math.floor(bottomQty / bottomPcsQty) : 0
   const totalProductQty = topPcsCreated + bottomPcsCreated
+
+  // Both (Top + Bottom) calculations - step by step
+  const bothCombinedQty = (bothTopQty || 0) + (bothBottomQty || 0)
+  // Step 1: Divide Total Product QTY by combined value
+  const stepOneResult = bothSelected && totalProductQty && bothCombinedQty > 0 
+    ? totalProductQty / bothCombinedQty
+    : 0
+  // Step 2: Divide that result by 2 to get pieces
+  const bothPiecesEach = stepOneResult > 0 ? Math.floor(stepOneResult / 2) : 0
 
   // Handle Top Qty constraint and auto-populate Bottom Qty
   useEffect(() => {
@@ -179,12 +195,17 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
         .filter(e => e.quality_name === selectedQuality)
         .reduce((sum, entry) => sum + entry.shorting_qty, 0)
 
-      // Available = Sum(Weaver Challan Qty) - Sum(Shorting Qty)
-      setMaxQuantity(totalWeaverChallanQty - totalShortingQty)
+      // Calculate total quantity already used by existing stitching challans for the selected quality
+      const totalIsteachingChallanQty = isteachingChallans
+        .filter(challan => challan.quality === selectedQuality)
+        .reduce((sum, challan) => sum + (challan.quantity || 0), 0)
+
+      // Available = Sum(Weaver Challan Qty) - Sum(Shorting Qty) - Sum(Existing Stitching Challan Qty)
+      setMaxQuantity(totalWeaverChallanQty - totalShortingQty - totalIsteachingChallanQty)
     } else {
       setMaxQuantity(null)
     }
-  }, [selectedQuality, shortingEntries])
+  }, [selectedQuality, shortingEntries, isteachingChallans])
 
   useEffect(() => {
     if (selectedQuality) {
@@ -214,14 +235,20 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
 
   // Custom validation for size quantities
   const validateSizeQuantity = (value: number, sizeIndex: number) => {
-    const selectedSize = selectedSizes?.[sizeIndex]
-    if (!selectedSize) return true
+    // Get the current size from the form state or the field
+    const currentSelectedSizes = watch('selected_sizes') || []
+    const currentSize = currentSelectedSizes[sizeIndex]?.size
     
-    const availableSize = availableSizes.find(s => s.size === selectedSize.size)
+    // If no size selected yet, allow any value >= 0
+    if (!currentSize) return true
+    
+    // Find the available size info
+    const availableSize = availableSizes.find(s => s.size === currentSize)
     if (!availableSize) return true
     
+    // Check if value exceeds available quantity
     if (value > availableSize.quantity) {
-      return `Quantity cannot exceed ${availableSize.quantity} for size ${selectedSize.size}`
+      return `Quantity cannot exceed ${availableSize.quantity} for size ${currentSize}`
     }
     
     return true
@@ -287,6 +314,9 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
         lr_number: data.lr_number || null,
         transport_charge: data.transport_charge || null,
         selected_product_id: data.selected_product_id || null,
+        both_selected: data.both_selected || null,
+        both_top_qty: data.both_top_qty || null,
+        both_bottom_qty: data.both_bottom_qty || null,
         // Store selected product and sizes as JSON if they exist
         product_size: data.selected_sizes ? JSON.stringify(data.selected_sizes) : null,
       }
@@ -443,6 +473,7 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
                 <Checkbox
                   id="cloth_type_top"
                   value="TOP"
+                  checked={clothType?.includes('TOP')}
                   onCheckedChange={(checked) => {
                     const current = clothType || []
                     const newSelection = checked
@@ -457,6 +488,7 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
                 <Checkbox
                   id="cloth_type_bottom"
                   value="BOTTOM"
+                  checked={clothType?.includes('BOTTOM')}
                   onCheckedChange={(checked) => {
                     const current = clothType || []
                     const newSelection = checked
@@ -581,6 +613,82 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
               )}
             </div>
           )}
+
+          {/* Both (Top + Bottom) Section */}
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="both_selected"
+                checked={bothSelected || false}
+                onCheckedChange={(checked) => {
+                  const isChecked = checked === true
+                  setValue('both_selected', isChecked)
+                  if (!isChecked) {
+                    setValue('both_top_qty', undefined)
+                    setValue('both_bottom_qty', undefined)
+                  }
+                }}
+              />
+              <Label htmlFor="both_selected">Both (Top + Bottom)</Label>
+            </div>
+
+            {bothSelected && (
+              <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <h4 className="text-lg font-semibold text-blue-800">Both (Top + Bottom) Configuration</h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="both_top_qty">Enter Top Qty (in meters)</Label>
+                    <Input 
+                      id="both_top_qty" 
+                      type="number" 
+                      step="0.01"
+                      {...register('both_top_qty', { valueAsNumber: true })} 
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="both_bottom_qty">Enter Bottom Qty (in meters)</Label>
+                    <Input 
+                      id="both_bottom_qty" 
+                      type="number" 
+                      step="0.01"
+                      {...register('both_bottom_qty', { valueAsNumber: true })} 
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+                
+                {bothCombinedQty > 0 && totalProductQty && (
+                  <div className="space-y-4 mt-4">
+                    <div className="p-3 bg-white rounded border">
+                      <p className="text-sm font-medium text-gray-700 mb-2">Calculation Steps:</p>
+                      <div className="space-y-1 text-sm text-gray-600">
+                        <p>Step 1: Total Product QTY ({totalProductQty}) ÷ Combined Qty ({bothCombinedQty}) = {stepOneResult.toFixed(2)}</p>
+                        <p>Step 2: {stepOneResult.toFixed(2)} ÷ 2 = {bothPiecesEach} pieces each</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-3 bg-green-50 rounded border border-green-200">
+                        <Label className="text-sm font-medium text-green-700">Top:</Label>
+                        <p className="text-lg font-semibold text-green-600">{bothPiecesEach} pcs will be made</p>
+                      </div>
+                      <div className="p-3 bg-green-50 rounded border border-green-200">
+                        <Label className="text-sm font-medium text-green-700">Bottom:</Label>
+                        <p className="text-lg font-semibold text-green-600">{bothPiecesEach} pcs will be made</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {bothCombinedQty === 0 && (bothTopQty || bothBottomQty) && (
+                  <div className="p-3 bg-yellow-50 rounded border border-yellow-200">
+                    <p className="text-sm text-yellow-800">Please enter both Top Qty and Bottom Qty to see calculations.</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -607,7 +715,11 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
               {fields.map((field, index) => (
                 <div key={field.id} className="flex items-center gap-4">
                   <Select
-                    onValueChange={(value) => setValue(`selected_sizes.${index}.size`, value)}
+                    onValueChange={(value) => {
+                      setValue(`selected_sizes.${index}.size`, value)
+                      // Reset quantity when size changes to avoid validation issues
+                      setValue(`selected_sizes.${index}.quantity`, 0)
+                    }}
                     defaultValue={field.size}
                   >
                     <SelectTrigger className="w-40">
@@ -632,7 +744,11 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
                         }
                       })}
                       placeholder="Quantity"
-                      max={availableSizes.find(s => s.size === field.size)?.quantity || 0}
+                      max={(() => {
+                        const currentSize = selectedSizes?.[index]?.size
+                        const availableSize = availableSizes.find(s => s.size === currentSize)
+                        return availableSize?.quantity || 999
+                      })()}
                       min="0"
                       className="w-32"
                     />

@@ -74,7 +74,7 @@ interface IsteachingChallanEditFormProps {
   batchNumbers: BatchNumber[]
   products: Product[]
   shortingEntries: { quality_name: string, shorting_qty: number, weaver_challan_qty: number, batch_number: string }[]
-  onSuccess?: () => void
+  onSuccess: () => void
 }
 
 export function IsteachingChallanEditForm({ 
@@ -176,13 +176,6 @@ export function IsteachingChallanEditForm({
     }
   }, [isteachingChallan.selected_product_id, products])
 
-  // Initialize quality on component mount to trigger filtering
-  useEffect(() => {
-    if (isteachingChallan.quality) {
-      setValue('quality', isteachingChallan.quality)
-    }
-  }, [isteachingChallan.quality, setValue])
-
   // Handle Top Qty constraint and auto-populate Bottom Qty
   useEffect(() => {
     if (topQty && currentQuantity) {
@@ -240,14 +233,12 @@ export function IsteachingChallanEditForm({
         .filter(e => e.quality_name === selectedQuality)
         .reduce((sum, entry) => sum + entry.shorting_qty, 0)
 
-      // Available = Sum(Weaver Challan Qty) - Sum(Shorting Qty) + Current Challan Qty (since we're editing)
-      const baseAvailable = totalWeaverChallanQty - totalShortingQty
-      const currentChallanQty = isteachingChallan.quantity || 0
-      setMaxQuantity(baseAvailable + currentChallanQty)
+      // Available = Sum(Weaver Challan Qty) - Sum(Shorting Qty)
+      setMaxQuantity(totalWeaverChallanQty - totalShortingQty)
     } else {
       setMaxQuantity(null)
     }
-  }, [selectedQuality, shortingEntries, isteachingChallan.quantity])
+  }, [selectedQuality, shortingEntries])
 
   useEffect(() => {
     if (selectedQuality) {
@@ -300,75 +291,31 @@ export function IsteachingChallanEditForm({
     setLoading(true)
     setError('')
 
-    if (maxQuantity !== null && data.quantity > maxQuantity) {
-      setError(`Quantity cannot exceed the available stock of ${maxQuantity}.`)
-      setIsAlertOpen(true)
-      setLoading(false)
-      return
-    }
-
-    // Validate selected sizes don't exceed available quantities
-    if (data.selected_sizes && availableSizes.length > 0) {
-      const totalSelectedQty = data.selected_sizes.reduce((sum, s) => sum + s.quantity, 0)
-      const maxAvailableQty = availableSizes.reduce((sum, s) => sum + s.quantity, 0)
-      
-      if (totalSelectedQty > maxAvailableQty) {
-        setError(`Selected quantities (${totalSelectedQty}) cannot exceed available stock (${maxAvailableQty}).`)
-        setIsAlertOpen(true)
-        setLoading(false)
-        return
-      }
-
-      // Validate individual size quantities
-      for (const selectedSize of data.selected_sizes) {
-        const availableSize = availableSizes.find(s => s.size === selectedSize.size)
-        if (availableSize && selectedSize.quantity > availableSize.quantity) {
-          setError(`Quantity for size ${selectedSize.size} (${selectedSize.quantity}) cannot exceed available stock (${availableSize.quantity}).`)
-          setIsAlertOpen(true)
-          setLoading(false)
-          return
-        }
-      }
-    }
-
     try {
-      const updateData = {
-        ...data,
-        transport_name: data.transport_name || null,
-        lr_number: data.lr_number || null,
-        transport_charge: data.transport_charge || null,
-        selected_product_id: data.selected_product_id || null,
-        both_selected: data.both_selected || null,
-        both_top_qty: data.both_top_qty || null,
-        both_bottom_qty: data.both_bottom_qty || null,
-        // Store selected sizes as JSON
-        product_size: data.selected_sizes ? JSON.stringify(data.selected_sizes) : null,
-      }
-
-      // Remove the selected_sizes field as it's not in the database schema
-      const { selected_sizes, ...finalUpdateData } = updateData as typeof updateData & { selected_sizes?: unknown }
-
-      console.log('Update data:', finalUpdateData) // Debug log
-      console.log('Challan ID:', isteachingChallan.id) // Debug log
-
       const { error: updateError } = await supabase
         .from('isteaching_challans')
-        .update(finalUpdateData)
+        .update({ 
+          ...data,
+          transport_name: data.transport_name || null,
+          lr_number: data.lr_number || null,
+          transport_charge: data.transport_charge || null,
+          selected_product_id: data.selected_product_id || null,
+          both_selected: data.both_selected || null,
+          both_top_qty: data.both_top_qty || null,
+          both_bottom_qty: data.both_bottom_qty || null,
+          // Store selected sizes as JSON
+          product_size: data.selected_sizes ? JSON.stringify(data.selected_sizes) : null,
+        })
         .eq('id', isteachingChallan.id)
 
       if (updateError) {
-        console.error('Supabase update error:', updateError) // Debug log
-        setError(`Failed to update challan: ${updateError.message || 'Unknown error'}`)
+        setError('Failed to update challan. Please try again.')
         showToast('Failed to update challan.', 'error')
-        setIsAlertOpen(true)
         return
       }
 
       showToast('Challan updated successfully!', 'success')
-      onSuccess?.()
-      if (!onSuccess) {
-        router.push(`/dashboard/production/isteaching-challan/${isteachingChallan.id}`)
-      }
+      onSuccess()
     } catch (err) {
       setError('An unexpected error occurred. Please try again.')
       showToast('An unexpected error occurred.', 'error')
@@ -428,8 +375,8 @@ export function IsteachingChallanEditForm({
                 <SelectValue placeholder="Select a quality" />
               </SelectTrigger>
               <SelectContent className='bg-white'>
-                {qualities.map(q => (
-                  <SelectItem key={q.product_name} value={q.product_name}>{q.product_name}</SelectItem>
+                {[...new Set(shortingEntries.map(q => q.quality_name))].map(qualityName => (
+                  <SelectItem key={qualityName} value={qualityName}>{qualityName}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

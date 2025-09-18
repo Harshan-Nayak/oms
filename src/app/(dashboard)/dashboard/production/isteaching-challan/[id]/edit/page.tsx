@@ -51,9 +51,18 @@ export default async function IsteachingChallanEditPage({ params }: IsteachingCh
     .select('*')
     .order('business_name', { ascending: true })
 
+  const { data: products } = await supabase
+    .from('products')
+    .select('*')
+    .order('product_name', { ascending: true })
+
   const { data: weaverChallans } = await supabase
     .from('weaver_challans')
     .select('quality_details, batch_number')
+
+  const { data: shortingEntries } = await supabase
+    .from('shorting_entries')
+    .select('quality_name, shorting_qty, weaver_challan_qty, batch_number')
 
   const qualities = weaverChallans
     ? [...new Set(
@@ -85,6 +94,8 @@ export default async function IsteachingChallanEditPage({ params }: IsteachingCh
         ledgers={ledgers || []} 
         qualities={qualities}
         batchNumbers={batchNumbers}
+        products={products || []}
+        shortingEntries={shortingEntries || []}
       />
     </div>
   )
