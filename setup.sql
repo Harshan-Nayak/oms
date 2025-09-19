@@ -149,8 +149,14 @@ CREATE TABLE public.isteaching_challans (
   top_qty NUMERIC,
   top_pcs_qty NUMERIC,
   bottom_qty NUMERIC,
-  bottom_pcs_qty NUMERIC
+  bottom_pcs_qty NUMERIC,
+  both_selected BOOLEAN DEFAULT FALSE,
+  both_top_qty NUMERIC(10,2),
+  both_bottom_qty NUMERIC(10,2)
 );
+
+-- Add index for better query performance
+CREATE INDEX idx_isteaching_challans_selected_product_id ON isteaching_challans(selected_product_id);
 
 -- Add comments for GST fields in weaver_challans
 COMMENT ON COLUMN public.weaver_challans.sgst IS 'State Goods and Services Tax percentage';
@@ -467,10 +473,14 @@ CREATE TABLE public.expenses (
   id SERIAL PRIMARY KEY,
   expense_date DATE NOT NULL,
   ledger_id TEXT REFERENCES ledgers(ledger_id) ON DELETE SET NULL,
-  challan_no TEXT REFERENCES weaver_challans(challan_no) ON DELETE SET NULL,
+  challan_no TEXT REFERENCES isteaching_challans(challan_no) ON DELETE SET NULL,
   expense_for TEXT[] NOT NULL,
   other_expense_description TEXT,
   cost DECIMAL(10,2) NOT NULL,
+  amount_before_gst DECIMAL(10,2) NOT NULL,
+  sgst TEXT CHECK (sgst IN ('2.5%', '5%', '6%', '9%', '12%', '18%', 'Not Applicable')) DEFAULT 'Not Applicable',
+  cgst TEXT CHECK (cgst IN ('2.5%', '5%', '6%', '9%', '12%', '18%', 'Not Applicable')) DEFAULT 'Not Applicable',
+  igst TEXT CHECK (igst IN ('2.5%', '5%', '6%', '9%', '12%', '18%', 'Not Applicable')) DEFAULT 'Not Applicable',
   created_by UUID REFERENCES auth.users(id),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

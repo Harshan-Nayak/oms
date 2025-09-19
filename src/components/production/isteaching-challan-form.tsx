@@ -127,16 +127,9 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
 
   const topPcsCreated = topQty && topPcsQty ? Math.floor(topQty / topPcsQty) : 0
   const bottomPcsCreated = bottomQty && bottomPcsQty ? Math.floor(bottomQty / bottomPcsQty) : 0
-  const totalProductQty = topPcsCreated + bottomPcsCreated
-
-  // Both (Top + Bottom) calculations - step by step
   const bothCombinedQty = (bothTopQty || 0) + (bothBottomQty || 0)
-  // Step 1: Divide Total Product QTY by combined value
-  const stepOneResult = bothSelected && totalProductQty && bothCombinedQty > 0 
-    ? totalProductQty / bothCombinedQty
-    : 0
-  // Step 2: Divide that result by 2 to get pieces
-  const bothPiecesEach = stepOneResult > 0 ? Math.floor(stepOneResult / 2) : 0
+  const bothPcsCreated = currentQuantity && bothCombinedQty > 0 ? Math.floor(currentQuantity / bothCombinedQty) : 0
+  const totalProductQty = bothSelected ? bothPcsCreated * 2 : topPcsCreated + bottomPcsCreated
 
   // Handle Top Qty constraint and auto-populate Bottom Qty
   useEffect(() => {
@@ -184,42 +177,49 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
   }, [selectedProductId, products])
 
   useEffect(() => {
-    if (selectedQuality) {
-      // Calculate total weaver challan quantity from shorting entries for the selected quality
-      const totalWeaverChallanQty = shortingEntries
-        .filter(e => e.quality_name === selectedQuality)
-        .reduce((sum, entry) => sum + entry.weaver_challan_qty, 0)
-
-      // Calculate total shorting quantity for the selected quality
-      const totalShortingQty = shortingEntries
-        .filter(e => e.quality_name === selectedQuality)
-        .reduce((sum, entry) => sum + entry.shorting_qty, 0)
-
-      // Calculate total quantity already used by existing stitching challans for the selected quality
-      const totalIsteachingChallanQty = isteachingChallans
-        .filter(challan => challan.quality === selectedQuality)
-        .reduce((sum, challan) => sum + (challan.quantity || 0), 0)
-
-      // Available = Sum(Weaver Challan Qty) - Sum(Shorting Qty) - Sum(Existing Stitching Challan Qty)
-      setMaxQuantity(totalWeaverChallanQty - totalShortingQty - totalIsteachingChallanQty)
+    if (selectedBatchNumbers && selectedBatchNumbers.length > 0) {
+      const totalAvailableQty = selectedBatchNumbers.reduce((sum, batchNumber) => {
+        const batch = filteredBatchNumbers.find(b => b.batch_number === batchNumber)
+        return sum + (batch ? batch.availableQty : 0)
+      }, 0)
+      setMaxQuantity(parseFloat(totalAvailableQty.toFixed(2)))
     } else {
-      setMaxQuantity(null)
+      setMaxQuantity(0)
     }
-  }, [selectedQuality, shortingEntries, isteachingChallans])
+  }, [selectedBatchNumbers, filteredBatchNumbers])
 
   useEffect(() => {
     if (selectedQuality) {
-      const batches = shortingEntries
+      const batchesForQuality = shortingEntries
         .filter(e => e.quality_name === selectedQuality)
-        .map(e => ({ 
-          batch_number: e.batch_number, 
-          availableQty: e.weaver_challan_qty - e.shorting_qty // Calculate available quantity
-        }))
-      setFilteredBatchNumbers(batches)
+        .map(e => ({
+          batch_number: e.batch_number,
+          initialQty: e.weaver_challan_qty - e.shorting_qty,
+        }));
+
+      const totalInitialQty = batchesForQuality.reduce((sum, batch) => sum + batch.initialQty, 0);
+
+      const totalUsedQty = isteachingChallans
+        .filter(challan => challan.quality === selectedQuality)
+        .reduce((sum, challan) => sum + (challan.quantity || 0), 0);
+
+      if (totalInitialQty > 0) {
+        const updatedBatches = batchesForQuality.map(batch => {
+          const proportionalUsedQty = (batch.initialQty / totalInitialQty) * totalUsedQty;
+          const availableQty = batch.initialQty - proportionalUsedQty;
+          return {
+            batch_number: batch.batch_number,
+            availableQty: Math.max(0, parseFloat(availableQty.toFixed(2))),
+          };
+        });
+        setFilteredBatchNumbers(updatedBatches);
+      } else {
+        setFilteredBatchNumbers(batchesForQuality.map(b => ({ batch_number: b.batch_number, availableQty: b.initialQty })));
+      }
     } else {
-      setFilteredBatchNumbers([])
+      setFilteredBatchNumbers([]);
     }
-  }, [selectedQuality, shortingEntries])
+  }, [selectedQuality, shortingEntries, isteachingChallans]);
 
   const handleLedgerSelect = (ledgerId: string) => {
     const ledger = ledgers.find(l => l.ledger_id === ledgerId)
@@ -424,7 +424,7 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
                         setValue('batch_number', newSelection)
                       }}
                     />
-                    <span className="ml-2">{bn.batch_number} ({bn.availableQty} mtr)</span>
+                    <span className="ml-2">{bn.batch_number} ({bn.availableQty.toFixed(2)} mtr)</span>
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -480,7 +480,12 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
                       ? [...current, 'TOP']
                       : current.filter((t) => t !== 'TOP')
                     setValue('cloth_type', newSelection)
+                    if (!checked) {
+                      setValue('top_qty', undefined)
+                      setValue('top_pcs_qty', undefined)
+                    }
                   }}
+                  disabled={bothSelected}
                 />
                 <Label htmlFor="cloth_type_top">TOP</Label>
               </div>
@@ -495,7 +500,12 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
                       ? [...current, 'BOTTOM']
                       : current.filter((t) => t !== 'BOTTOM')
                     setValue('cloth_type', newSelection)
+                    if (!checked) {
+                      setValue('bottom_qty', undefined)
+                      setValue('bottom_pcs_qty', undefined)
+                    }
                   }}
+                  disabled={bothSelected}
                 />
                 <Label htmlFor="cloth_type_bottom">BOTTOM</Label>
               </div>
@@ -557,10 +567,82 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
             </div>
           )}
 
+           {/* Both (Top + Bottom) Section */}
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="both_selected"
+                checked={bothSelected || false}
+                onCheckedChange={(checked) => {
+                  const isChecked = checked === true
+                  setValue('both_selected', isChecked)
+                  if (!isChecked) {
+                    setValue('both_top_qty', undefined)
+                    setValue('both_bottom_qty', undefined)
+                  }
+                }}
+                disabled={clothType?.includes('TOP') || clothType?.includes('BOTTOM')}
+              />
+              <Label htmlFor="both_selected">Both (Top + Bottom)</Label>
+            </div>
+
+            {bothSelected && (
+              <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <h4 className="text-lg font-semibold text-blue-800">Both (Top + Bottom) Configuration</h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="both_top_qty">Enter 1pc Top Qty (in meters)</Label>
+                    <Input
+                      id="both_top_qty"
+                      type="number"
+                      step="0.01"
+                      {...register('both_top_qty', { valueAsNumber: true })}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="both_bottom_qty">Enter 1pc Bottom Qty (in meters)</Label>
+                    <Input
+                      id="both_bottom_qty"
+                      type="number"
+                      step="0.01"
+                      {...register('both_bottom_qty', { valueAsNumber: true })}
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+                
+                {bothCombinedQty > 0 && currentQuantity && (
+                  <div className="space-y-4 mt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-3 bg-green-50 rounded border border-green-200">
+                        <Label className="text-sm font-medium text-green-700">Top pcs created:</Label>
+                        <p className="text-lg font-semibold text-green-600">{bothPcsCreated}</p>
+                      </div>
+                      <div className="p-3 bg-green-50 rounded border border-green-200">
+                        <Label className="text-sm font-medium text-green-700">Bottom pcs created:</Label>
+                        <p className="text-lg font-semibold text-green-600">{bothPcsCreated}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {bothCombinedQty === 0 && (bothTopQty || bothBottomQty) && (
+                  <div className="p-3 bg-yellow-50 rounded border border-yellow-200">
+                    <p className="text-sm text-yellow-800">Please enter both Top Qty and Bottom Qty to see calculations.</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="space-y-2">
             <Label>Total Product QTY</Label>
             <p className="text-lg font-semibold">{totalProductQty}</p>
           </div>
+
+         
         </CardContent>
       </Card>
 
@@ -613,82 +695,6 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
               )}
             </div>
           )}
-
-          {/* Both (Top + Bottom) Section */}
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="both_selected"
-                checked={bothSelected || false}
-                onCheckedChange={(checked) => {
-                  const isChecked = checked === true
-                  setValue('both_selected', isChecked)
-                  if (!isChecked) {
-                    setValue('both_top_qty', undefined)
-                    setValue('both_bottom_qty', undefined)
-                  }
-                }}
-              />
-              <Label htmlFor="both_selected">Both (Top + Bottom)</Label>
-            </div>
-
-            {bothSelected && (
-              <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <h4 className="text-lg font-semibold text-blue-800">Both (Top + Bottom) Configuration</h4>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="both_top_qty">Enter Top Qty (in meters)</Label>
-                    <Input 
-                      id="both_top_qty" 
-                      type="number" 
-                      step="0.01"
-                      {...register('both_top_qty', { valueAsNumber: true })} 
-                      placeholder="0.00"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="both_bottom_qty">Enter Bottom Qty (in meters)</Label>
-                    <Input 
-                      id="both_bottom_qty" 
-                      type="number" 
-                      step="0.01"
-                      {...register('both_bottom_qty', { valueAsNumber: true })} 
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-                
-                {bothCombinedQty > 0 && totalProductQty && (
-                  <div className="space-y-4 mt-4">
-                    <div className="p-3 bg-white rounded border">
-                      <p className="text-sm font-medium text-gray-700 mb-2">Calculation Steps:</p>
-                      <div className="space-y-1 text-sm text-gray-600">
-                        <p>Step 1: Total Product QTY ({totalProductQty}) ÷ Combined Qty ({bothCombinedQty}) = {stepOneResult.toFixed(2)}</p>
-                        <p>Step 2: {stepOneResult.toFixed(2)} ÷ 2 = {bothPiecesEach} pieces each</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="p-3 bg-green-50 rounded border border-green-200">
-                        <Label className="text-sm font-medium text-green-700">Top:</Label>
-                        <p className="text-lg font-semibold text-green-600">{bothPiecesEach} pcs will be made</p>
-                      </div>
-                      <div className="p-3 bg-green-50 rounded border border-green-200">
-                        <Label className="text-sm font-medium text-green-700">Bottom:</Label>
-                        <p className="text-lg font-semibold text-green-600">{bothPiecesEach} pcs will be made</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                {bothCombinedQty === 0 && (bothTopQty || bothBottomQty) && (
-                  <div className="p-3 bg-yellow-50 rounded border border-yellow-200">
-                    <p className="text-sm text-yellow-800">Please enter both Top Qty and Bottom Qty to see calculations.</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
         </CardContent>
       </Card>
 
