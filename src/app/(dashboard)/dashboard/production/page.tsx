@@ -18,7 +18,7 @@ export default async function ProductionDashboardPage() {
 
   const { data: weaverChallansData } = await supabase
     .from('weaver_challans')
-    .select('quality_details')
+    .select('quality_details, batch_number')
 
   const { data: shortingEntries } = await supabase
     .from('shorting_entries')
@@ -71,9 +71,12 @@ export default async function ProductionDashboardPage() {
     }
   })
 
+  const batchNumbers = weaverChallansData?.map(c => c.batch_number).filter(Boolean) as string[] || []
+
   return (
-    <ProductionDashboardContent 
+    <ProductionDashboardContent
       finishedStock={finishedStock}
+      batchNumbers={batchNumbers}
     />
   )
 }

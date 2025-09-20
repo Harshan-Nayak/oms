@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
 import { Database } from '@/types/database'
 
 interface ProductionDashboardContentProps {
@@ -15,15 +16,25 @@ interface ProductionDashboardContentProps {
     issued_qty: number
     available_qty: number
   }[]
+  batchNumbers: string[]
 }
 
-export function ProductionDashboardContent({ finishedStock }: ProductionDashboardContentProps) {
+export function ProductionDashboardContent({ finishedStock, batchNumbers }: ProductionDashboardContentProps) {
+  const [selectedBatch, setSelectedBatch] = useState<string | null>(null)
+  const router = useRouter()
+
+  const handleViewHistory = () => {
+    if (selectedBatch) {
+      router.push(`/dashboard/production/batch/${selectedBatch}`)
+    }
+  }
+
   const totalStock = finishedStock.reduce((sum, stock) => sum + stock.available_qty, 0)
   const totalQualities = finishedStock.length
   const totalIssued = finishedStock.reduce((sum, stock) => sum + stock.issued_qty, 0)
   const totalReceived = finishedStock.reduce((sum, stock) => sum + stock.total_qty, 0)
   const totalShorted = finishedStock.reduce((sum, stock) => sum + stock.shorted_qty, 0)
-  const topStockQuality = finishedStock.reduce((max, stock) => stock.available_qty > max.available_qty ? stock : max, finishedStock[0] || { quality_name: 'N/A', available_qty: 0 })
+  const topStockQuality = finishedStock.reduce((max, stock) => stock.available_qty > max.available_qty ? stock : max, { quality_name: 'N/A', available_qty: 0 })
 
   return (
     <div className="space-y-6">
@@ -35,6 +46,29 @@ export function ProductionDashboardContent({ finishedStock }: ProductionDashboar
           </p>
         </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Batch History</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center space-x-4">
+          <Select onValueChange={setSelectedBatch}>
+            <SelectTrigger className="w-[280px]">
+              <SelectValue placeholder="Select a batch number" />
+            </SelectTrigger>
+            <SelectContent className='bg-white' >
+              {batchNumbers.map(batch => (
+                <SelectItem key={batch} value={batch}>
+                  {batch}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={handleViewHistory} disabled={!selectedBatch}>
+            View History
+          </Button>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

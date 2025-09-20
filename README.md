@@ -104,6 +104,7 @@ This is a complete rewrite of the original PHP-based Bhaktinandan OMS system, mo
 - [x] **Production Tracking**: Total grey meters, taka, transport details
 - [x] **Quality Management**: JSONB-based quality details storage
 - [x] **Ledger Integration**: Connected with weaver/party ledgers
+- [x] **Batch History**: Comprehensive batch tracking with all related information
 
 #### **Purchase Management ✅**
 - [x] **Purchase Order Creation**: Full PO system with items and calculations
