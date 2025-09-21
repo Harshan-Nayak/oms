@@ -135,6 +135,115 @@ CIRLCE,
               </tr>
             </tbody>
           </table>
+          
+          {/* Batch Details with Same Labels as Convert to Inventory Page */}
+          <div className="mt-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Batch Details</h3>
+            {isteachingChallan.both_selected && (
+              <div className="mb-2 p-2 bg-blue-50 rounded text-sm text-blue-700">
+                Note: This challan uses the &quot;Both (Top + Bottom)&quot; configuration
+              </div>
+            )}
+            <div className="space-y-2">
+              {isteachingChallan.both_selected ? (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Top 1pc Quantity:</span>
+                    <span className="font-medium">
+                      {isteachingChallan.both_top_qty !== null && isteachingChallan.both_top_qty !== undefined ? isteachingChallan.both_top_qty : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Top Pcs created:</span>
+                    <span className="font-medium">
+                      {(() => {
+                        // For "Both" case, calculate pieces created
+                        if (isteachingChallan.quantity && isteachingChallan.both_top_qty !== null && isteachingChallan.both_bottom_qty !== null) {
+                          const totalQty = isteachingChallan.both_top_qty + isteachingChallan.both_bottom_qty;
+                          if (totalQty > 0) {
+                            return Math.floor(isteachingChallan.quantity / totalQty);
+                          }
+                        }
+                        return 'N/A';
+                      })()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Bottom 1pc Quantity:</span>
+                    <span className="font-medium">
+                      {isteachingChallan.both_bottom_qty !== null && isteachingChallan.both_bottom_qty !== undefined ? isteachingChallan.both_bottom_qty : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Bottom Pcs created:</span>
+                    <span className="font-medium">
+                      {(() => {
+                        // For "Both" case, calculate pieces created (same as top pieces)
+                        if (isteachingChallan.quantity && isteachingChallan.both_top_qty !== null && isteachingChallan.both_bottom_qty !== null) {
+                          const totalQty = isteachingChallan.both_top_qty + isteachingChallan.both_bottom_qty;
+                          if (totalQty > 0) {
+                            return Math.floor(isteachingChallan.quantity / totalQty);
+                          }
+                        }
+                        return 'N/A';
+                      })()}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Top Quantity (Total mtrs):</span>
+                    <span className="font-medium">
+                      {isteachingChallan.top_qty !== null && isteachingChallan.top_qty !== undefined ? isteachingChallan.top_qty : (isteachingChallan.top_qty === 0 ? '0' : 'N/A')}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Top 1pc Quantity:</span>
+                    <span className="font-medium">
+                      {isteachingChallan.top_pcs_qty !== null && isteachingChallan.top_pcs_qty !== undefined ? isteachingChallan.top_pcs_qty : (isteachingChallan.top_pcs_qty === 0 ? '0' : 'N/A')}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Top Pcs created:</span>
+                    <span className="font-medium">
+                      {(() => {
+                        // For regular case, calculate pieces created
+                        if (isteachingChallan.top_qty && isteachingChallan.top_pcs_qty && isteachingChallan.top_pcs_qty > 0) {
+                          return Math.floor(isteachingChallan.top_qty / isteachingChallan.top_pcs_qty);
+                        }
+                        return 'N/A';
+                      })()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Bottom Quantity (Total mtrs):</span>
+                    <span className="font-medium">
+                      {isteachingChallan.bottom_qty !== null && isteachingChallan.bottom_qty !== undefined ? isteachingChallan.bottom_qty : (isteachingChallan.bottom_qty === 0 ? '0' : 'N/A')}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Bottom 1pc Quantity:</span>
+                    <span className="font-medium">
+                      {isteachingChallan.bottom_pcs_qty !== null && isteachingChallan.bottom_pcs_qty !== undefined ? isteachingChallan.bottom_pcs_qty : (isteachingChallan.bottom_pcs_qty === 0 ? '0' : 'N/A')}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Bottom Pcs created:</span>
+                    <span className="font-medium">
+                      {(() => {
+                        // For regular case, calculate pieces created
+                        if (isteachingChallan.bottom_qty && isteachingChallan.bottom_pcs_qty && isteachingChallan.bottom_pcs_qty > 0) {
+                          return Math.floor(isteachingChallan.bottom_qty / isteachingChallan.bottom_pcs_qty);
+                        }
+                        return 'N/A';
+                      })()}
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </section>
 
         {sizeDetails.length > 0 && (

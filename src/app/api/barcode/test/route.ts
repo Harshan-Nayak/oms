@@ -22,9 +22,10 @@ export async function GET() {
       ledgerName: 'Test Ledger'
     }
     
-    // Create a URL-encoded string for the barcode content
-    const content = encodeURIComponent(JSON.stringify(testBarcodeData))
-    const barcodeUrl = `https://barcodeapi.org/api/auto/${content}`
+    // Create a simplified content for the barcode (using product SKU for simplicity)
+    const content = testBarcodeData.productSKU || 'TEST001'
+    // Generate Code128 barcode using bwip-js API
+    const barcodeUrl = `http://bwipjs-api.metafloor.com/?bcid=code128&text=${encodeURIComponent(content)}&scale=3&height=10&includetext=true&textxalign=center`
     
     return NextResponse.json({ 
       success: true,
