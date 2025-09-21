@@ -27,6 +27,12 @@ type BatchHistoryProps = {
 export default function BatchHistory({ batchNumber }: BatchHistoryProps) {
   const [history, setHistory] = useState<BatchHistoryData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [inventoryDetails, setInventoryDetails] = useState<{
+    good: number;
+    bad: number;
+    wastage: number;
+    shorting: number;
+  } | null>(null);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -41,6 +47,32 @@ export default function BatchHistory({ batchNumber }: BatchHistoryProps) {
       } else {
         console.log('Fetched batch history data:', data);
         setHistory(data);
+      }
+
+      // Fetch inventory classification details
+      const { data: inventoryData, error: inventoryError } = await supabase
+        .from('isteaching_challans')
+        .select('inventory_classification, quantity')
+        .contains('batch_number', [batchNumber]);
+
+      if (!inventoryError && inventoryData) {
+        const good = inventoryData
+          .filter(item => item.inventory_classification === 'good')
+          .reduce((sum, item) => sum + item.quantity, 0);
+        
+        const bad = inventoryData
+          .filter(item => item.inventory_classification === 'bad')
+          .reduce((sum, item) => sum + item.quantity, 0);
+        
+        const wastage = inventoryData
+          .filter(item => item.inventory_classification === 'wastage')
+          .reduce((sum, item) => sum + item.quantity, 0);
+        
+        const shorting = inventoryData
+          .filter(item => item.inventory_classification === 'shorting')
+          .reduce((sum, item) => sum + item.quantity, 0);
+
+        setInventoryDetails({ good, bad, wastage, shorting });
       }
 
       setLoading(false);
@@ -113,6 +145,11 @@ export default function BatchHistory({ batchNumber }: BatchHistoryProps) {
     (sum, challan) => sum + (challan.bottom_pcs_qty || 0),
     0
   ) || 0;
+
+  // Calculate Manufacturing Cost per Unit
+  const totalCost = totalExpenses;
+  const goodInventoryCount = inventoryDetails?.good || 0;
+  const manufacturingCostPerUnit = goodInventoryCount > 0 ? totalCost / goodInventoryCount : 0;
 
   return (
     <div className="container mx-auto py-6">
@@ -187,6 +224,80 @@ export default function BatchHistory({ batchNumber }: BatchHistoryProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Manufacturing Cost per Unit */}
+      {goodInventoryCount > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Good Inventory Items</CardDescription>
+              <CardTitle className="text-2xl">{goodInventoryCount} pcs</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground">
+                Successfully converted to inventory
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Manufacturing Cost per Unit</CardDescription>
+              <CardTitle className="text-2xl">₹{manufacturingCostPerUnit.toFixed(2)}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground">
+                Total Cost / Good Inventory Items
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Inventory Classification Details */}
+      {inventoryDetails && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Good Inventory</CardDescription>
+              <CardTitle className="text-2xl">{inventoryDetails.good} pcs</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Badge className="bg-green-100 text-green-800">Good</Badge>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Bad Inventory</CardDescription>
+              <CardTitle className="text-2xl">{inventoryDetails.bad} pcs</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Badge className="bg-red-100 text-red-800">Bad</Badge>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Wastage</CardDescription>
+              <CardTitle className="text-2xl">{inventoryDetails.wastage} pcs</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Badge className="bg-yellow-100 text-yellow-800">Wastage</Badge>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Shorting</CardDescription>
+              <CardTitle className="text-2xl">{inventoryDetails.shorting} pcs</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Badge className="bg-blue-100 text-blue-800">Shorting</Badge>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Additional Stitching Statistics */}
       {history.isteaching_challans && history.isteaching_challans.length > 0 && (
@@ -344,6 +455,7 @@ export default function BatchHistory({ batchNumber }: BatchHistoryProps) {
                     <TableHead className="text-right">Quantity</TableHead>
                     <TableHead className="text-right">Top (m/pcs)</TableHead>
                     <TableHead className="text-right">Bottom (m/pcs)</TableHead>
+                    <TableHead className="text-right">Classification</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -362,6 +474,23 @@ export default function BatchHistory({ batchNumber }: BatchHistoryProps) {
                         {challan.bottom_qty ? `${challan.bottom_qty}m` : ''}
                         {challan.both_selected && challan.both_bottom_qty ? `${challan.both_bottom_qty}m` : ''}
                         {challan.bottom_pcs_qty ? `/${challan.bottom_pcs_qty}pcs` : ''}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {challan.inventory_classification ? (
+                          <Badge 
+                            className={
+                              challan.inventory_classification === 'good' ? 'bg-green-100 text-green-800' :
+                              challan.inventory_classification === 'bad' ? 'bg-red-100 text-red-800' :
+                              challan.inventory_classification === 'wastage' ? 'bg-yellow-100 text-yellow-800' :
+                              challan.inventory_classification === 'shorting' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                            }
+                          >
+                            {challan.inventory_classification}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline">Unclassified</Badge>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

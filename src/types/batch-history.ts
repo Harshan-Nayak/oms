@@ -22,6 +22,7 @@ export interface IsteachingChallanHistory {
   both_selected?: boolean | null;
   both_top_qty?: number | null;
   both_bottom_qty?: number | null;
+  inventory_classification?: string | null;
 }
 
 export interface ExpenseHistory {

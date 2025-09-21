@@ -7,6 +7,35 @@ type QualityDetail = {
   rate: number
 }
 
+type BatchData = {
+  batch_number: string
+  weaver_challan_date: string
+  weaver_challan_party: string
+  weaver_challan_quantity: number
+  total_raw_fabric_used: number
+  stitching_challans: {
+    id: number
+    date: string
+    challan_no: string
+    product_name: string | null
+    quantity: number
+    top_qty: number | null
+    top_pcs_qty: number | null
+    bottom_qty: number | null
+    bottom_pcs_qty: number | null
+    both_selected: boolean | null
+    both_top_qty: number | null
+    both_bottom_qty: number | null
+    inventory_classification: string | null
+  }[]
+  expenses: {
+    id: number
+    expense_date: string
+    cost: number
+    expense_for: string[]
+  }[]
+}
+
 export default async function ProductionDashboardPage() {
   const supabase = createServerSupabaseClient()
   
@@ -16,18 +45,22 @@ export default async function ProductionDashboardPage() {
     redirect('/login')
   }
 
+  // Fetch weaver challans with batch numbers
   const { data: weaverChallansData } = await supabase
     .from('weaver_challans')
-    .select('quality_details, batch_number')
+    .select('quality_details, batch_number, challan_date, ms_party_name, total_grey_mtr')
 
+  // Fetch shorting entries
   const { data: shortingEntries } = await supabase
     .from('shorting_entries')
     .select('*')
 
+  // Fetch isteaching challans
   const { data: isteachingChallans } = await supabase
     .from('isteaching_challans')
     .select('*')
 
+  // Calculate finished stock by quality
   const weaverChallansByQuality: { [key: string]: number } = {}
   if (weaverChallansData) {
     for (const challan of weaverChallansData) {
@@ -73,10 +106,59 @@ export default async function ProductionDashboardPage() {
 
   const batchNumbers = weaverChallansData?.map(c => c.batch_number).filter(Boolean) as string[] || []
 
-  return (
+  // Fetch detailed batch data for the dashboard
+  const batchData: BatchData[] = []
+  
+  if (weaverChallansData) {
+    for (const weaverChallan of weaverChallansData) {
+      // Fetch stitching challans for this batch
+      const { data: stitchingChallans } = await supabase
+        .from('isteaching_challans')
+        .select(`
+          id,
+          date,
+          challan_no,
+          product_name,
+          quantity,
+          top_qty,
+          top_pcs_qty,
+          bottom_qty,
+          bottom_pcs_qty,
+          both_selected,
+          both_top_qty,
+          both_bottom_qty,
+          inventory_classification
+        `)
+        .contains('batch_number', [weaverChallan.batch_number])
+      
+      // Fetch expenses related to stitching challans of this batch
+      const challanNumbers = stitchingChallans?.map(challan => challan.challan_no) || []
+      let expensesData = []
+      if (challanNumbers.length > 0) {
+        const { data: expenses } = await supabase
+          .from('expenses')
+          .select('*')
+          .in('challan_no', challanNumbers)
+        expensesData = expenses || []
+      }
+      
+      batchData.push({
+        batch_number: weaverChallan.batch_number,
+        weaver_challan_date: weaverChallan.challan_date,
+        weaver_challan_party: weaverChallan.ms_party_name,
+        weaver_challan_quantity: weaverChallan.total_grey_mtr,
+        total_raw_fabric_used: weaverChallan.total_grey_mtr, // This would be adjusted based on shorting entries
+        stitching_challans: stitchingChallans || [],
+        expenses: expensesData
+      })
+    }
+  }
+
+ return (
     <ProductionDashboardContent
       finishedStock={finishedStock}
       batchNumbers={batchNumbers}
+      batchData={batchData}
     />
   )
 }
