@@ -76,7 +76,12 @@ export function Sidebar({ profile, isOpen, onClose }: SidebarProps) {
       title: 'Inventory',
       icon: <Package className="h-5 w-5" />,
       items: [
-        { title: 'Products', href: '/dashboard/inventory/products' }
+        { title: 'Products', href: '/dashboard/inventory/products' },
+        { title: 'Convert To Inventory', href: '/dashboard/inventory/convert-to-inventory' },
+        { title: 'Good Inventory', href: '/dashboard/inventory/good-inventory' },
+        { title: 'Bad Inventory', href: '/dashboard/inventory/bad-inventory' },
+        { title: 'Wastage', href: '/dashboard/inventory/wastage' },
+        { title: 'Shorting', href: '/dashboard/inventory/shorting' }
       ]
     },
     {

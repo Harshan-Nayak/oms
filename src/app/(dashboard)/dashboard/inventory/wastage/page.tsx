@@ -1,0 +1,46 @@
+import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import { WastageContent } from '@/components/inventory/wastage-content'
+
+export default async function WastagePage() {
+  const supabase = createServerSupabaseClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) {
+    redirect('/login')
+  }
+
+  // Get user profile
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile) {
+    redirect('/login')
+  }
+
+  // Fetch wastage items
+ const { data: wastageItems, error } = await supabase
+    .from('isteaching_challans')
+    .select(`
+      *,
+      ledgers (business_name),
+      products (product_name, product_description, product_image, product_sku)
+    `)
+    .eq('inventory_classification', 'wastage')
+    .order('date', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching wastage items:', error)
+  }
+
+  return (
+    <WastageContent
+      items={wastageItems || []}
+      userRole={profile.user_role}
+    />
+  )
+}
