@@ -324,6 +324,7 @@ export function IsteachingChallanContent({
                 <TableHead>Quantity</TableHead>
                 <TableHead>Product Name</TableHead>
                 <TableHead>Print</TableHead>
+                <TableHead>Barcode</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -350,6 +351,14 @@ export function IsteachingChallanContent({
                   <TableCell>
                     <Button variant="outline" size="icon" onClick={() => window.open(`/print/isteaching-challan/${challan.id}`, '_blank')}>
                       <FileText className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                  <TableCell>
+                    <Button variant="outline" size="icon" onClick={() => window.open(`/print/barcode/isteaching-challan/${challan.id}`, '_blank')}>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 5v14a1 1 0 0 1 1h16a1 0 0 0 1-1V5a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1z"/>
+                        <path d="M8 12h.01M12 12h.01M16 12h.01"/>
+                      </svg>
                     </Button>
                   </TableCell>
                   <TableCell className="text-right">

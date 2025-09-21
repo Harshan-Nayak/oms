@@ -149,12 +149,13 @@ export function IsteachingChallanEditForm({
 
   const topPcsCreated = topQty && topPcsQty ? Math.floor(topQty / topPcsQty) : 0
   const bottomPcsCreated = bottomQty && bottomPcsQty ? Math.floor(bottomQty / bottomPcsQty) : 0
-  const totalProductQty = topPcsCreated + bottomPcsCreated
+  const bothCombinedQty = (bothTopQty || 0) + (bothBottomQty || 0)
+  const bothPcsCreated = currentQuantity && bothCombinedQty > 0 ? Math.floor(currentQuantity / bothCombinedQty) : 0
+  const totalProductQty = bothSelected ? bothPcsCreated * 2 : topPcsCreated + bottomPcsCreated
 
   // Both (Top + Bottom) calculations - step by step
-  const bothCombinedQty = (bothTopQty || 0) + (bothBottomQty || 0)
   // Step 1: Divide Total Product QTY by combined value
-  const stepOneResult = bothSelected && totalProductQty && bothCombinedQty > 0 
+  const stepOneResult = bothSelected && totalProductQty && bothCombinedQty > 0
     ? totalProductQty / bothCombinedQty
     : 0
   // Step 2: Divide that result by 2 to get pieces
@@ -559,7 +560,7 @@ export function IsteachingChallanEditForm({
               </div>
               <div className="space-y-2">
                 <Label>Top Pcs Created</Label>
-                <p className="text-lg font-semibold">{topPcsCreated}</p>
+                <p className="text-lg font-semibold">{bothSelected ? bothPcsCreated : topPcsCreated}</p>
               </div>
             </div>
           )}
@@ -585,7 +586,7 @@ export function IsteachingChallanEditForm({
               </div>
               <div className="space-y-2">
                 <Label>Bottom Pcs Created</Label>
-                <p className="text-lg font-semibold">{bottomPcsCreated}</p>
+                <p className="text-lg font-semibold">{bothSelected ? bothPcsCreated : bottomPcsCreated}</p>
               </div>
             </div>
           )}
@@ -692,23 +693,16 @@ export function IsteachingChallanEditForm({
                   </div>
                 </div>
                 
-                {bothCombinedQty > 0 && totalProductQty && (
+                {bothCombinedQty > 0 && currentQuantity && (
                   <div className="space-y-4 mt-4">
-                    <div className="p-3 bg-white rounded border">
-                      <p className="text-sm font-medium text-gray-700 mb-2">Calculation Steps:</p>
-                      <div className="space-y-1 text-sm text-gray-600">
-                        <p>Step 1: Total Product QTY ({totalProductQty}) ÷ Combined Qty ({bothCombinedQty}) = {stepOneResult.toFixed(2)}</p>
-                        <p>Step 2: {stepOneResult.toFixed(2)} ÷ 2 = {bothPiecesEach} pieces each</p>
-                      </div>
-                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="p-3 bg-green-50 rounded border border-green-200">
-                        <Label className="text-sm font-medium text-green-700">Top:</Label>
-                        <p className="text-lg font-semibold text-green-600">{bothPiecesEach} pcs will be made</p>
+                        <Label className="text-sm font-medium text-green-700">Top pcs created:</Label>
+                        <p className="text-lg font-semibold text-green-600">{bothPcsCreated}</p>
                       </div>
                       <div className="p-3 bg-green-50 rounded border border-green-200">
-                        <Label className="text-sm font-medium text-green-700">Bottom:</Label>
-                        <p className="text-lg font-semibold text-green-600">{bothPiecesEach} pcs will be made</p>
+                        <Label className="text-sm font-medium text-green-700">Bottom pcs created:</Label>
+                        <p className="text-lg font-semibold text-green-600">{bothPcsCreated}</p>
                       </div>
                     </div>
                   </div>

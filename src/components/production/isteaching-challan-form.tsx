@@ -99,7 +99,7 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
   } = useForm<IsteachingChallanFormData>({
     resolver: zodResolver(isteachingChallanSchema),
     defaultValues: {
-      date: new Date().toISOString().split('T')[0],
+      date: new Date().toLocaleDateString('en-CA'), // YYYY-MM-DD format
       batch_number: [],
       selected_sizes: [{ size: 'M', quantity: 0 }],
       both_selected: false,
@@ -130,6 +130,8 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
   const bothCombinedQty = (bothTopQty || 0) + (bothBottomQty || 0)
   const bothPcsCreated = currentQuantity && bothCombinedQty > 0 ? Math.floor(currentQuantity / bothCombinedQty) : 0
   const totalProductQty = bothSelected ? bothPcsCreated * 2 : topPcsCreated + bottomPcsCreated
+  const totalSelectedSizeQty = selectedSizes?.reduce((sum, s) => sum + (s.quantity || 0), 0) || 0
+  const maxAllowedSizeQty = totalProductQty / 2
 
   // Handle Top Qty constraint and auto-populate Bottom Qty
   useEffect(() => {
@@ -233,27 +235,6 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
     setValue('selected_sizes', [{ size: 'M', quantity: 0 }])
   }
 
-  // Custom validation for size quantities
-  const validateSizeQuantity = (value: number, sizeIndex: number) => {
-    // Get the current size from the form state or the field
-    const currentSelectedSizes = watch('selected_sizes') || []
-    const currentSize = currentSelectedSizes[sizeIndex]?.size
-    
-    // If no size selected yet, allow any value >= 0
-    if (!currentSize) return true
-    
-    // Find the available size info
-    const availableSize = availableSizes.find(s => s.size === currentSize)
-    if (!availableSize) return true
-    
-    // Check if value exceeds available quantity
-    if (value > availableSize.quantity) {
-      return `Quantity cannot exceed ${availableSize.quantity} for size ${currentSize}`
-    }
-    
-    return true
-  }
-
   const onSubmit = async (data: IsteachingChallanFormData) => {
     setLoading(true)
     setError('')
@@ -265,27 +246,16 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
       return
     }
 
-    // Validate selected sizes don't exceed available quantities
-    if (data.selected_sizes && availableSizes.length > 0) {
-      const totalSelectedQty = data.selected_sizes.reduce((sum, s) => sum + s.quantity, 0)
-      const maxAvailableQty = availableSizes.reduce((sum, s) => sum + s.quantity, 0)
-      
-      if (totalSelectedQty > maxAvailableQty) {
-        setError(`Selected quantities (${totalSelectedQty}) cannot exceed available stock (${maxAvailableQty}).`)
+    // Validate total size quantity against Total Product QTY / 2
+    if (data.selected_sizes && totalProductQty > 0) {
+      const totalSelectedSizeQty = data.selected_sizes.reduce((sum, s) => sum + (s.quantity || 0), 0)
+      const maxAllowedSizeQty = totalProductQty / 2
+
+      if (totalSelectedSizeQty > maxAllowedSizeQty) {
+        setError(`Total selected size quantity (${totalSelectedSizeQty}) cannot exceed half of the Total Product QTY (${maxAllowedSizeQty.toFixed(2)}).`)
         setIsAlertOpen(true)
         setLoading(false)
         return
-      }
-
-      // Validate individual size quantities
-      for (const selectedSize of data.selected_sizes) {
-        const availableSize = availableSizes.find(s => s.size === selectedSize.size)
-        if (availableSize && selectedSize.quantity > availableSize.quantity) {
-          setError(`Quantity for size ${selectedSize.size} (${selectedSize.quantity}) cannot exceed available stock (${availableSize.quantity}).`)
-          setIsAlertOpen(true)
-          setLoading(false)
-          return
-        }
       }
     }
 
@@ -699,62 +669,51 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
       </Card>
 
       {/* Size Selection */}
-      {selectedProduct && availableSizes.length > 0 && (
+      {selectedProduct && (
         <Card>
           <CardHeader>
             <CardTitle>Size Selection</CardTitle>
-            <CardDescription>Select sizes and quantities from available options</CardDescription>
+            <CardDescription>Select sizes and quantities</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="mb-4">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Available Sizes:</h4>
-              <div className="flex flex-wrap gap-2">
-                {availableSizes.map((size, index) => (
-                  <div key={index} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-                    {size.size}: {size.quantity} pcs
-                  </div>
-                ))}
+            {availableSizes.length > 0 && (
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Available Sizes:</h4>
+                <div className="flex flex-wrap gap-2">
+                  {availableSizes.map((size, index) => (
+                    <div key={index} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                      {size.size}: {size.quantity} pcs
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
             
             <div className="space-y-3">
               {fields.map((field, index) => (
                 <div key={field.id} className="flex items-center gap-4">
                   <Select
-                    onValueChange={(value) => {
-                      setValue(`selected_sizes.${index}.size`, value)
-                      // Reset quantity when size changes to avoid validation issues
-                      setValue(`selected_sizes.${index}.quantity`, 0)
-                    }}
+                    onValueChange={(value) => setValue(`selected_sizes.${index}.size`, value)}
                     defaultValue={field.size}
                   >
                     <SelectTrigger className="w-40">
                       <SelectValue placeholder="Select size" />
                     </SelectTrigger>
                     <SelectContent className='bg-white'>
-                      {availableSizes.map(size => (
-                        <SelectItem key={size.size} value={size.size}>
-                          {size.size} ({size.quantity} available)
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="S">S</SelectItem>
+                      <SelectItem value="M">M</SelectItem>
+                      <SelectItem value="L">L</SelectItem>
+                      <SelectItem value="XL">XL</SelectItem>
                     </SelectContent>
                   </Select>
                   <div className="flex-1">
                     <Input
                       type="number"
-                      {...register(`selected_sizes.${index}.quantity`, { 
+                      {...register(`selected_sizes.${index}.quantity`, {
                         valueAsNumber: true,
-                        validate: (value) => {
-                          if (value < 0) return 'Quantity must be at least 0'
-                          return validateSizeQuantity(value, index)
-                        }
+                        min: 0,
                       })}
                       placeholder="Quantity"
-                      max={(() => {
-                        const currentSize = selectedSizes?.[index]?.size
-                        const availableSize = availableSizes.find(s => s.size === currentSize)
-                        return availableSize?.quantity || 999
-                      })()}
                       min="0"
                       className="w-32"
                     />
@@ -780,17 +739,26 @@ export function IsteachingChallanForm({ ledgers, qualities, batchNumbers, produc
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => append({ size: availableSizes[0]?.size || 'M', quantity: 0 })}
-                disabled={availableSizes.length === 0}
+                onClick={() => append({ size: 'M', quantity: 0 })}
               >
                 <Plus className="h-4 w-4 mr-2" /> Add Size
               </Button>
               
               {selectedSizes && selectedSizes.length > 0 && (
-                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                  <span className="text-sm font-medium text-blue-800">
-                    Total Selected: {selectedSizes.reduce((sum, s) => sum + s.quantity, 0)} pcs
+                <div className={`mt-4 p-3 rounded-lg ${totalSelectedSizeQty > maxAllowedSizeQty ? 'bg-red-100' : 'bg-blue-50'}`}>
+                  <span className={`text-sm font-medium ${totalSelectedSizeQty > maxAllowedSizeQty ? 'text-red-800' : 'text-blue-800'}`}>
+                    Total Selected: {totalSelectedSizeQty} pcs
                   </span>
+                  {totalProductQty > 0 && (
+                    <span className="text-sm text-gray-500 ml-2">
+                      (Max: {maxAllowedSizeQty.toFixed(2)} pcs)
+                    </span>
+                  )}
+                  {totalSelectedSizeQty > maxAllowedSizeQty && (
+                    <p className="text-sm text-red-600 mt-1">
+                      Cannot exceed half of the Total Product QTY.
+                    </p>
+                  )}
                 </div>
               )}
             </div>

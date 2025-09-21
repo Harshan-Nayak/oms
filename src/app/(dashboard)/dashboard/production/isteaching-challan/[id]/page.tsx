@@ -207,9 +207,11 @@ export default async function IsteachingChallanDetailPage({ params }: Isteaching
                   <div>
                     <label className="text-sm font-medium text-gray-700">Top Pcs Created</label>
                     <p className="text-lg font-semibold">
-                      {isteachingChallan.top_qty && isteachingChallan.top_pcs_qty
-                        ? Math.floor(isteachingChallan.top_qty / isteachingChallan.top_pcs_qty)
-                        : 0}
+                      {isteachingChallan.both_selected
+                        ? Math.floor((isteachingChallan.quantity || 0) / ((isteachingChallan.both_top_qty || 0) + (isteachingChallan.both_bottom_qty || 0)))
+                        : (isteachingChallan.top_qty && isteachingChallan.top_pcs_qty
+                            ? Math.floor(isteachingChallan.top_qty / isteachingChallan.top_pcs_qty)
+                            : 0)}
                     </p>
                   </div>
                 </>
@@ -227,9 +229,11 @@ export default async function IsteachingChallanDetailPage({ params }: Isteaching
                   <div>
                     <label className="text-sm font-medium text-gray-700">Bottom Pcs Created</label>
                     <p className="text-lg font-semibold">
-                      {isteachingChallan.bottom_qty && isteachingChallan.bottom_pcs_qty
-                        ? Math.floor(isteachingChallan.bottom_qty / isteachingChallan.bottom_pcs_qty)
-                        : 0}
+                      {isteachingChallan.both_selected
+                        ? Math.floor((isteachingChallan.quantity || 0) / ((isteachingChallan.both_top_qty || 0) + (isteachingChallan.both_bottom_qty || 0)))
+                        : (isteachingChallan.bottom_qty && isteachingChallan.bottom_pcs_qty
+                            ? Math.floor(isteachingChallan.bottom_qty / isteachingChallan.bottom_pcs_qty)
+                            : 0)}
                     </p>
                   </div>
                 </>
@@ -237,12 +241,14 @@ export default async function IsteachingChallanDetailPage({ params }: Isteaching
               <div>
                 <label className="text-sm font-medium text-gray-700">Total Product QTY</label>
                 <p className="text-lg font-semibold">
-                  {(isteachingChallan.top_qty && isteachingChallan.top_pcs_qty
-                    ? Math.floor(isteachingChallan.top_qty / isteachingChallan.top_pcs_qty)
-                    : 0) +
-                    (isteachingChallan.bottom_qty && isteachingChallan.bottom_pcs_qty
-                      ? Math.floor(isteachingChallan.bottom_qty / isteachingChallan.bottom_pcs_qty)
-                      : 0)}
+                  {isteachingChallan.both_selected
+                    ? Math.floor((isteachingChallan.quantity || 0) / ((isteachingChallan.both_top_qty || 0) + (isteachingChallan.both_bottom_qty || 0))) * 2
+                    : ((isteachingChallan.top_qty && isteachingChallan.top_pcs_qty
+                        ? Math.floor(isteachingChallan.top_qty / isteachingChallan.top_pcs_qty)
+                        : 0) +
+                       (isteachingChallan.bottom_qty && isteachingChallan.bottom_pcs_qty
+                        ? Math.floor(isteachingChallan.bottom_qty / isteachingChallan.bottom_pcs_qty)
+                        : 0))}
                 </p>
               </div>
             </CardContent>
@@ -272,63 +278,27 @@ export default async function IsteachingChallanDetailPage({ params }: Isteaching
                   </div>
                 </div>
                 
-                {isteachingChallan.both_top_qty && isteachingChallan.both_bottom_qty && (
+                {(isteachingChallan.both_top_qty || 0) + (isteachingChallan.both_bottom_qty || 0) > 0 && isteachingChallan.quantity && (
                   <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
                     <h5 className="text-md font-semibold text-blue-800 mb-3">Calculation Results</h5>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <label className="text-sm font-medium text-gray-700">Combined Qty</label>
-                        <p className="text-lg font-bold">{(isteachingChallan.both_top_qty + isteachingChallan.both_bottom_qty).toFixed(2)} meters</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-700">Step 1 Result</label>
-                        <p className="text-lg font-bold">
-                          {((isteachingChallan.top_qty && isteachingChallan.top_pcs_qty
-                            ? Math.floor(isteachingChallan.top_qty / isteachingChallan.top_pcs_qty)
-                            : 0) +
-                            (isteachingChallan.bottom_qty && isteachingChallan.bottom_pcs_qty
-                              ? Math.floor(isteachingChallan.bottom_qty / isteachingChallan.bottom_pcs_qty)
-                              : 0)) / (isteachingChallan.both_top_qty + isteachingChallan.both_bottom_qty)}
-                        </p>
-                        <p className="text-xs text-gray-500">Total QTY ÷ Combined Qty</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-700">Final Pieces Each</label>
-                        <p className="text-xl font-bold text-green-600">
-                          {Math.floor((((isteachingChallan.top_qty && isteachingChallan.top_pcs_qty
-                            ? Math.floor(isteachingChallan.top_qty / isteachingChallan.top_pcs_qty)
-                            : 0) +
-                            (isteachingChallan.bottom_qty && isteachingChallan.bottom_pcs_qty
-                              ? Math.floor(isteachingChallan.bottom_qty / isteachingChallan.bottom_pcs_qty)
-                              : 0)) / (isteachingChallan.both_top_qty + isteachingChallan.both_bottom_qty)) / 2)}
-                        </p>
-                        <p className="text-xs text-gray-500">Step 1 ÷ 2</p>
-                      </div>
-                    </div>
-                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-green-100 p-3 rounded-lg">
-                        <p className="text-sm font-medium text-green-800">
-                          Top: {Math.floor((((isteachingChallan.top_qty && isteachingChallan.top_pcs_qty
-                            ? Math.floor(isteachingChallan.top_qty / isteachingChallan.top_pcs_qty)
-                            : 0) +
-                            (isteachingChallan.bottom_qty && isteachingChallan.bottom_pcs_qty
-                              ? Math.floor(isteachingChallan.bottom_qty / isteachingChallan.bottom_pcs_qty)
-                              : 0)) / (isteachingChallan.both_top_qty + isteachingChallan.both_bottom_qty)) / 2)} pcs will be made
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-3 bg-green-50 rounded border border-green-200">
+                        <label className="text-sm font-medium text-green-700">Top pcs created:</label>
+                        <p className="text-lg font-semibold text-green-600">
+                          {Math.floor((isteachingChallan.quantity || 0) / ((isteachingChallan.both_top_qty || 0) + (isteachingChallan.both_bottom_qty || 0)))}
                         </p>
                       </div>
-                      <div className="bg-orange-100 p-3 rounded-lg">
-                        <p className="text-sm font-medium text-orange-800">
-                          Bottom: {Math.floor((((isteachingChallan.top_qty && isteachingChallan.top_pcs_qty
-                            ? Math.floor(isteachingChallan.top_qty / isteachingChallan.top_pcs_qty)
-                            : 0) +
-                            (isteachingChallan.bottom_qty && isteachingChallan.bottom_pcs_qty
-                              ? Math.floor(isteachingChallan.bottom_qty / isteachingChallan.bottom_pcs_qty)
-                              : 0)) / (isteachingChallan.both_top_qty + isteachingChallan.both_bottom_qty)) / 2)} pcs will be made
+                      <div className="p-3 bg-green-50 rounded border border-green-200">
+                        <label className="text-sm font-medium text-green-700">Bottom pcs created:</label>
+                        <p className="text-lg font-semibold text-green-600">
+                          {Math.floor((isteachingChallan.quantity || 0) / ((isteachingChallan.both_top_qty || 0) + (isteachingChallan.both_bottom_qty || 0)))}
                         </p>
                       </div>
                     </div>
                   </div>
                 )}
+
+             
               </CardContent>
             </Card>
           )}
