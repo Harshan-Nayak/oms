@@ -473,6 +473,7 @@ CREATE TABLE public.expenses (
   id SERIAL PRIMARY KEY,
   expense_date DATE NOT NULL,
   ledger_id TEXT REFERENCES ledgers(ledger_id) ON DELETE SET NULL,
+  manual_ledger_id TEXT REFERENCES ledgers(ledger_id) ON DELETE SET NULL,
   challan_no TEXT REFERENCES isteaching_challans(challan_no) ON DELETE SET NULL,
   expense_for TEXT[] NOT NULL,
   other_expense_description TEXT,
@@ -485,6 +486,10 @@ CREATE TABLE public.expenses (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Add comments for ledger columns
+COMMENT ON COLUMN public.expenses.ledger_id IS 'Auto-detected ledger from selected challan';
+COMMENT ON COLUMN public.expenses.manual_ledger_id IS 'Manually selected ledger by user, overrides auto-detected ledger from challan when set';
 
 -- Create expense_logs table
 CREATE TABLE public.expense_logs (

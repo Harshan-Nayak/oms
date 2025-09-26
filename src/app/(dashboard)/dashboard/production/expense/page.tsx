@@ -19,7 +19,13 @@ export default async function ExpensePage() {
     return redirect('/login');
   }
 
-  const { data: expenses } = await supabase.from('expenses').select(`*, ledgers (business_name)`);
+  const { data: expenses } = await supabase
+    .from('expenses')
+    .select(`
+      *,
+      ledgers!expenses_ledger_id_fkey (business_name),
+      manual_ledgers:ledgers!expenses_manual_ledger_id_fkey (business_name)
+    `);
   const { data: ledgers } = await supabase.from('ledgers').select('*');
 
   return (

@@ -22,6 +22,7 @@ export type Database = {
           expense_for: string[]
           id: number
           ledger_id: string | null
+          manual_ledger_id: string | null
           challan_no: string | null
           other_expense_description: string | null
           updated_at: string
@@ -38,6 +39,7 @@ export type Database = {
           expense_for: string[]
           id?: number
           ledger_id?: string | null
+          manual_ledger_id?: string | null
           challan_no?: string | null
           other_expense_description?: string | null
           updated_at?: string
@@ -54,6 +56,7 @@ export type Database = {
           expense_for?: string[]
           id?: number
           ledger_id?: string | null
+          manual_ledger_id?: string | null
           challan_no?: string | null
           other_expense_description?: string | null
           updated_at?: string
@@ -69,6 +72,13 @@ export type Database = {
           {
             foreignKeyName: "expenses_ledger_id_fkey"
             columns: ["ledger_id"]
+            isOneToOne: false
+            referencedRelation: "ledgers"
+            referencedColumns: ["ledger_id"]
+          },
+          {
+            foreignKeyName: "expenses_manual_ledger_id_fkey"
+            columns: ["manual_ledger_id"]
             isOneToOne: false
             referencedRelation: "ledgers"
             referencedColumns: ["ledger_id"]

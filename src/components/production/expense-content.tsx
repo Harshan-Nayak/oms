@@ -16,6 +16,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 
 type Expense = Database['public']['Tables']['expenses']['Row'] & {
   ledgers?: { business_name: string } | null;
+  manual_ledgers?: { business_name: string } | null;
 };
 type Ledger = Database['public']['Tables']['ledgers']['Row'];
 type UserRole = Database['public']['Tables']['profiles']['Row']['user_role'];
@@ -48,9 +49,10 @@ export function ExpenseContent({ userId, expenses: initialExpenses, ledgers, use
     const matchesSearch = !searchTerm ||
       expense.challan_no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       expense.ledgers?.business_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      expense.manual_ledgers?.business_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       expense.expense_for.join(', ').toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesParty = !partyFilter || partyFilter === 'all' || expense.ledger_id === partyFilter;
+    const matchesParty = !partyFilter || partyFilter === 'all' || expense.ledger_id === partyFilter || expense.manual_ledger_id === partyFilter;
     
     const matchesDate = (!startDateFilter || new Date(expense.expense_date) >= new Date(startDateFilter)) &&
                         (!endDateFilter || new Date(expense.expense_date) < new Date(new Date(endDateFilter).setDate(new Date(endDateFilter).getDate() + 1)));
@@ -153,7 +155,7 @@ export function ExpenseContent({ userId, expenses: initialExpenses, ledgers, use
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card><CardContent className="p-4"><div className="text-2xl font-bold text-blue-600">{filteredExpenses.length}</div><div className="text-sm text-gray-600">Filtered Expenses</div></CardContent></Card>
         <Card><CardContent className="p-4"><div className="text-2xl font-bold text-green-600">₹{filteredExpenses.reduce((sum, expense) => sum + expense.cost, 0).toFixed(2)}</div><div className="text-sm text-gray-600">Total Cost</div></CardContent></Card>
-        <Card><CardContent className="p-4"><div className="text-2xl font-bold text-purple-600">{new Set(filteredExpenses.map(e => e.ledger_id)).size}</div><div className="text-sm text-gray-600">Unique Ledgers</div></CardContent></Card>
+        <Card><CardContent className="p-4"><div className="text-2xl font-bold text-purple-600">{new Set(filteredExpenses.flatMap(e => [e.ledger_id, e.manual_ledger_id].filter(Boolean))).size}</div><div className="text-sm text-gray-600">Unique Ledgers</div></CardContent></Card>
       </div>
 
       {loading ? <p>Loading expenses...</p> : (
@@ -172,7 +174,7 @@ export function ExpenseContent({ userId, expenses: initialExpenses, ledgers, use
               {filteredExpenses.map(expense => (
                 <tr key={expense.id}>
                   <td className="px-6 py-4 whitespace-nowrap">{expense.expense_date}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{expense.ledgers?.business_name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{expense.manual_ledger_id ? expense.manual_ledgers?.business_name : expense.ledgers?.business_name}</td>
                   <td className="px-6 py-4 whitespace-nowrap">{expense.expense_for.join(', ')}</td>
                   <td className="px-6 py-4 whitespace-nowrap">₹{expense.cost}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">

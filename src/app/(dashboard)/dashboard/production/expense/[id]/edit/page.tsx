@@ -21,7 +21,11 @@ export default async function EditExpensePage({ params }: EditExpensePageProps) 
 
   const { data: expense, error } = await supabase
     .from('expenses')
-    .select('*')
+    .select(`
+      *,
+      ledgers!expenses_ledger_id_fkey ( business_name ),
+      manual_ledgers:ledgers!expenses_manual_ledger_id_fkey ( business_name )
+    `)
     .eq('id', resolvedParams.id)
     .single();
 

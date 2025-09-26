@@ -21,13 +21,16 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import * as PopoverPrimitive from "@radix-ui/react-popover"
 
 type Ledger = Database['public']['Tables']['ledgers']['Row'];
-type IsteachingChallan = Database['public']['Tables']['isteaching_challans']['Row'];
+type IsteachingChallan = Database['public']['Tables']['isteaching_challans']['Row'] & {
+  ledgers?: { business_name: string } | null;
+};
 type Expense = Database['public']['Tables']['expenses']['Row'];
 
 const expenseSchema = z.object({
   expense_date: z.string(),
   challan_no: z.string().min(1, 'Challan/Batch Number is required'),
-  ledger_id: z.string().min(1, 'Ledger selection is required'),
+  ledger_id: z.string().optional(), // Auto-detected from challan
+  manual_ledger_id: z.string().optional(), // Manually selected ledger
   expense_for: z.array(z.string()).min(1, 'At least one expense category is required'),
   other_expense_description: z.string().optional(),
   amount_before_gst: z.number().min(0.01, 'Amount must be greater than 0'),
@@ -72,7 +75,8 @@ export function ExpenseForm({ ledgers, userId, onSuccessRedirect, expense }: Exp
     defaultValues: expense ? {
       expense_date: expense.expense_date,
       challan_no: expense.challan_no || '',
-      ledger_id: '', // Will be set from challan selection
+      ledger_id: expense.ledger_id || '', // Auto-detected ledger from existing expense
+      manual_ledger_id: expense.manual_ledger_id || '', // Manual ledger override from existing expense
       expense_for: expense.expense_for || [],
       other_expense_description: expense.other_expense_description || '',
       amount_before_gst: expense.amount_before_gst || 0,
@@ -83,6 +87,7 @@ export function ExpenseForm({ ledgers, userId, onSuccessRedirect, expense }: Exp
       expense_date: new Date().toISOString().split('T')[0],
       challan_no: '',
       ledger_id: '',
+      manual_ledger_id: '',
       expense_for: [],
       amount_before_gst: 0,
       sgst: 'Not Applicable',
@@ -110,9 +115,24 @@ export function ExpenseForm({ ledgers, userId, onSuccessRedirect, expense }: Exp
       if (expense.challan_no) {
         handleChallanSelect(expense.challan_no);
       }
+      // Set the manual ledger selection if the expense has a manual ledger override
+      if (expense.manual_ledger_id) {
+        setValue('manual_ledger_id', expense.manual_ledger_id);
+        const ledger = ledgers.find(l => l.ledger_id === expense.manual_ledger_id);
+        if (ledger) {
+          setSelectedLedger(ledger);
+        }
+      } else if (expense.ledger_id) {
+        // If no manual ledger, use the auto-detected ledger
+        setValue('ledger_id', expense.ledger_id);
+        const ledger = ledgers.find(l => l.ledger_id === expense.ledger_id);
+        if (ledger) {
+          setSelectedLedger(ledger);
+        }
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expense, challans]);
+  }, [expense, challans, ledgers]);
 
   const fetchAllStitchingChallans = async () => {
     const { data, error } = await supabase
@@ -175,8 +195,13 @@ export function ExpenseForm({ ledgers, userId, onSuccessRedirect, expense }: Exp
     setError('');
 
     try {
-      const expenseData = { 
-        ...data, 
+      // Determine which ledger to use: manual override takes precedence over auto-detected
+      const finalLedgerId = data.manual_ledger_id || data.ledger_id;
+      
+      const expenseData = {
+        ...data,
+        ledger_id: finalLedgerId, // Use the effective ledger (manual override if present, otherwise auto-detected)
+        manual_ledger_id: data.manual_ledger_id, // Preserve the manual override if any
         cost: gstCalculation.totalAmount // Store total amount in cost field for backward compatibility
       };
 
@@ -249,14 +274,45 @@ export function ExpenseForm({ ledgers, userId, onSuccessRedirect, expense }: Exp
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="ledger_id">Select Ledger *</Label>
+            <Label htmlFor="ledger_id">Auto-detected Ledger (from Challan)</Label>
             <Input
-              value={selectedLedger ? selectedLedger.business_name : 'No ledger selected'}
+              value={challans.find(c => c.challan_no === challanNo)?.ledgers?.business_name || 'No ledger selected'}
               readOnly
               className="bg-gray-100"
               placeholder="Auto-fetched from selected challan"
             />
             {errors.ledger_id && <p className="text-sm text-red-600">{errors.ledger_id.message}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="manual_ledger_id">Manual Ledger Override (Optional)</Label>
+            <div className="flex items-center space-x-2">
+              <Input
+                value={selectedLedger && watch('manual_ledger_id') ? selectedLedger.business_name : 'No manual ledger selected'}
+                readOnly
+                className="bg-gray-100"
+                placeholder="Select a ledger manually to override auto-detected ledger"
+              />
+              <LedgerSelectModal
+                ledgers={ledgers}
+                onLedgerSelect={(ledgerId) => {
+                  setValue('manual_ledger_id', ledgerId);
+                  const ledger = ledgers.find(l => l.ledger_id === ledgerId);
+                  if (ledger) {
+                    setSelectedLedger(ledger);
+                  }
+                }}
+              >
+                <Button type="button" variant="outline">
+                  Select Ledger
+                </Button>
+              </LedgerSelectModal>
+            </div>
+            <p className="text-sm text-gray-500">
+              {watch('manual_ledger_id')
+                ? 'Using manual ledger override'
+                : 'Using auto-detected ledger from selected challan'}
+            </p>
           </div>
 
           <div className="space-y-2">

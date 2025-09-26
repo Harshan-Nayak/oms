@@ -23,7 +23,8 @@ export default async function ViewExpensePage({ params }: ViewExpensePageProps) 
     .from('expenses')
     .select(`
       *,
-      ledgers ( business_name ),
+      ledgers!expenses_ledger_id_fkey ( business_name ),
+      manual_ledgers:ledgers!expenses_manual_ledger_id_fkey ( business_name ),
       isteaching_challans ( batch_number )
     `)
     .eq('id', resolvedParams.id)
@@ -63,8 +64,16 @@ export default async function ViewExpensePage({ params }: ViewExpensePageProps) 
               <p>{new Date(expense.expense_date).toLocaleDateString()}</p>
             </div>
             <div>
-              <Label>Ledger</Label>
-              <p>{expense.ledgers?.business_name}</p>
+              <Label>Auto-detected Ledger</Label>
+              <p>{expense.ledgers?.business_name || 'N/A'}</p>
+            </div>
+            <div>
+              <Label>Manual Ledger</Label>
+              <p>{expense.manual_ledgers?.business_name || 'N/A'}</p>
+            </div>
+            <div>
+              <Label>Effective Ledger</Label>
+              <p>{expense.manual_ledger_id ? expense.manual_ledgers?.business_name : expense.ledgers?.business_name || 'N/A'}</p>
             </div>
             <div>
               <Label>Challan/Batch Number</Label>
@@ -86,8 +95,8 @@ export default async function ViewExpensePage({ params }: ViewExpensePageProps) 
                 {expense.igst && expense.igst !== 'Not Applicable' && (
                   <p>IGST: {expense.igst}</p>
                 )}
-                {(!expense.sgst || expense.sgst === 'Not Applicable') && 
-                 (!expense.cgst || expense.cgst === 'Not Applicable') && 
+                {(!expense.sgst || expense.sgst === 'Not Applicable') &&
+                 (!expense.cgst || expense.cgst === 'Not Applicable') &&
                  (!expense.igst || expense.igst === 'Not Applicable') && (
                   <p>No GST Applied</p>
                 )}
