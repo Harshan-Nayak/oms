@@ -95,7 +95,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         
         if (productId) {
           // Create the URL with the product ID and include size information
-          const productUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/product/${productId}?size=${size.size}&barcode=${i}`;
+          const productUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://oms-two-mu.vercel.app'}/product/${productId}?size=${size.size}&barcode=${i}`;
           barcodeText = productUrl;
         } else {
           // Fallback to original format if no product ID is available
