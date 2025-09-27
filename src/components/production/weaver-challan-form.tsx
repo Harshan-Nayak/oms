@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Checkbox } from '@/components/ui/checkbox'
 import { LedgerSelectModal } from './ledger-select-modal'
 import { Loader2, Plus, Trash2, Building2 } from 'lucide-react'
 import { Database } from '@/types/database'
@@ -40,6 +41,7 @@ const weaverChallanSchema = z.object({
   fold_cm: z.number().min(0).optional(),
   width_inch: z.number().min(0).optional(),
   taka: z.number().min(1, 'Taka must be at least 1'),
+  hasTakaNumber: z.boolean().optional(),
   transport_name: z.string().optional(),
   lr_number: z.string().optional(),
   transport_charge: z.number().min(0).optional(),
@@ -93,6 +95,7 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
       fold_cm: 0,
       width_inch: 0,
       taka: 0,
+      hasTakaNumber: false,
       transport_name: '',
       lr_number: '',
       transport_charge: 0,
@@ -130,6 +133,7 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
   const sgst = watch('sgst')
   const cgst = watch('cgst')
   const igst = watch('igst')
+  const hasTakaNumber = watch('hasTakaNumber') || false;
 
   // GST Calculation Logic
   const calculateGSTAmount = (percentage: string | undefined, baseAmount: number) => {
@@ -221,28 +225,31 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
     try {
       const { batchNumber, challanNumber } = await generateNumbers()
 
+      // Extract hasTakaNumber and use the rest of the data
+      const { hasTakaNumber, ...restData } = data;
+
       const challanData: WeaverChallan = {
-        challan_date: data.challan_date,
+        challan_date: restData.challan_date,
         batch_number: batchNumber,
         challan_no: challanNumber,
         ms_party_name: selectedLedger?.business_name || '',
-        ledger_id: data.ledger_id,
-        total_grey_mtr: data.total_grey_mtr,
-        fold_cm: data.fold_cm || null,
-        width_inch: data.width_inch || null,
-        taka: data.taka,
-        taka_details: data.taka_details,
-        transport_name: data.transport_name || null,
-        lr_number: data.lr_number || null,
-        transport_charge: data.transport_charge || null,
-        quality_details: data.quality_details,
+        ledger_id: restData.ledger_id,
+        total_grey_mtr: restData.total_grey_mtr,
+        fold_cm: restData.fold_cm || null,
+        width_inch: restData.width_inch || null,
+        taka: restData.taka,
+        taka_details: restData.taka_details,
+        transport_name: restData.transport_name || null,
+        lr_number: restData.lr_number || null,
+        transport_charge: restData.transport_charge || null,
+        quality_details: restData.quality_details,
         created_by: userId,
-        vendor_ledger_id: data.vendor_ledger_id || null,
-        vendor_invoice_number: data.vendor_invoice_number || null,
-        vendor_amount: data.vendor_amount || null,
-        sgst: data.sgst || null,
-        cgst: data.cgst || null,
-        igst: data.igst || null,
+        vendor_ledger_id: restData.vendor_ledger_id || null,
+        vendor_invoice_number: restData.vendor_invoice_number || null,
+        vendor_amount: restData.vendor_amount || null,
+        sgst: restData.sgst || null,
+        cgst: restData.cgst || null,
+        igst: restData.igst || null,
       }
 
       const { error: insertError } = await supabase
@@ -639,21 +646,33 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
           <CardDescription>Enter details for each taka.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="flex items-center space-x-2 mb-4">
+            <Checkbox
+              id="hasTakaNumber"
+              checked={watch('hasTakaNumber')}
+              onCheckedChange={(checked) => setValue('hasTakaNumber', Boolean(checked))}
+            />
+            <Label htmlFor="hasTakaNumber" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+              I have Taka Number
+            </Label>
+          </div>
           <div className="space-y-2">
             {takaFields.map((field, index) => (
               <div key={field.id} className="flex items-center space-x-2">
                 <span className="font-medium">{index + 1}.</span>
-                <Input
-                  {...register(`taka_details.${index}.taka_number`)}
-                  placeholder="Taka Number"
-                  className="w-1/2"
-                />
+                {hasTakaNumber && (
+                  <Input
+                    {...register(`taka_details.${index}.taka_number`)}
+                    placeholder="Taka Number"
+                    className="w-1/3"
+                  />
+                )}
                 <Input
                   type="number"
                   step="0.01"
                   {...register(`taka_details.${index}.meters`, { valueAsNumber: true })}
                   placeholder="Meters in this taka"
-                  className="w-1/2"
+                  className={hasTakaNumber ? "w-1/3" : "w-1/2"}
                 />
                 <Button type="button" variant="destructive" size="icon" onClick={() => removeTaka(index)}>
                   <Trash2 className="h-4 w-4" />
@@ -744,3 +763,6 @@ export function WeaverChallanForm({ ledgers, userId, userName, onSuccess }: Weav
     </form>
   )
 }
+
+
+
