@@ -88,9 +88,21 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
           ledgerName: isteachingChallan.ledgers?.business_name || ''
         }
         
-        // Create a simplified content for the barcode (using a combination of SKU and barcode number)
-        const productSKU = isteachingChallan.products?.product_sku || isteachingChallan.product_sku || 'NOSKU'
-        const barcodeText = `${productSKU}-${size.size}-${i}`
+        // Create a simplified content for the barcode (embedding the product URL with size info)
+        // Get the product ID to create the URL
+        const productId = isteachingChallan.products?.id || isteachingChallan.selected_product_id || null;
+        let barcodeText;
+        
+        if (productId) {
+          // Create the URL with the product ID and include size information
+          const productUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/product/${productId}?size=${size.size}&barcode=${i}`;
+          barcodeText = productUrl;
+        } else {
+          // Fallback to original format if no product ID is available
+          const productSKU = isteachingChallan.products?.product_sku || isteachingChallan.product_sku || 'NOSKU';
+          barcodeText = `${productSKU}-${size.size}-${i}`;
+        }
+        
         // Generate Code128 barcode using bwip-js API
         const barcodeUrl = `http://bwipjs-api.metafloor.com/?bcid=code128&text=${encodeURIComponent(barcodeText)}&scale=3&height=10&includetext=true&textxalign=center`
         barcodes.push(barcodeUrl)
